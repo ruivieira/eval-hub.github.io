@@ -1,102 +1,98 @@
 # EvalHub Server
 
-REST API orchestration service for managing LLM evaluation workflows.
-
-## What is the EvalHub Server?
-
-The EvalHub Server is an open source Go application that provides a versioned REST API for evaluation job management, orchestrates Kubernetes Job creation and lifecycle management, and maintains a registry for discovering evaluation providers and benchmarks. It supports curated benchmark collections with weighted scoring, uses SQLite for local development and PostgreSQL for production, and includes structured logging, Prometheus metrics, and health checks for observability.
-
-## Core Capabilities
-
-### Evaluation Job Management
-
-The server manages evaluation jobs through REST API endpoints, supporting job creation from benchmark specifications or curated collections, status monitoring, result retrieval, and job cancellation.
-
-### Provider and Benchmark Discovery
-
-The provider registry enables discovery of evaluation providers and their benchmarks, allowing clients to list registered providers, retrieve provider metadata, enumerate benchmarks, and access benchmark configuration schemas.
-
-### Collection Management
-
-Collections provide curated benchmark sets with weighted scoring, supporting provider-based grouping and domain-specific configurations such as healthcare or finance compliance, all executable through a single API call.
-
+Go REST API service for managing LLM evaluation workflows.
 
 ## REST API
 
-The server exposes a versioned REST API at `/api/v1/` following RESTful resource-oriented design with JSON request and response bodies, standard HTTP status codes, and an OpenAPI 3.1.0 specification.
+All endpoints are under `/api/v1`. Request and response bodies use JSON. The OpenAPI 3.1.0 specification is served at `/openapi.yaml`.
 
-### Core Endpoints
+### Evaluation Jobs
 
-**Evaluation Jobs**:
 ```
-POST   /api/v1/evaluations/jobs        # Create evaluation job
-GET    /api/v1/evaluations/jobs        # List jobs
-GET    /api/v1/evaluations/jobs/{id}   # Get job details
-DELETE /api/v1/evaluations/jobs/{id}   # Cancel job
-```
-
-**Providers & Benchmarks**:
-```
-GET /api/v1/providers               # List providers
-GET /api/v1/providers/{id}          # Get provider details
-GET /api/v1/benchmarks              # List all benchmarks
-GET /api/v1/benchmarks/{id}         # Get benchmark details
+POST   /api/v1/evaluations/jobs             # Submit evaluation
+GET    /api/v1/evaluations/jobs             # List jobs
+GET    /api/v1/evaluations/jobs/{id}        # Get job status and results
+DELETE /api/v1/evaluations/jobs/{id}        # Cancel job
+POST   /api/v1/evaluations/jobs/{id}/events # Status/result callback (adapter → server)
 ```
 
-**Collections**:
+### Providers
+
 ```
-GET /api/v1/collections             # List collections
-GET /api/v1/collections/{id}        # Get collection details
+GET    /api/v1/evaluations/providers             # List providers
+POST   /api/v1/evaluations/providers             # Register provider
+GET    /api/v1/evaluations/providers/{id}        # Get provider
+PUT    /api/v1/evaluations/providers/{id}        # Update provider
+PATCH  /api/v1/evaluations/providers/{id}        # Patch provider
+DELETE /api/v1/evaluations/providers/{id}        # Delete provider
 ```
 
-**Health & Metrics**:
+Query parameters: `benchmarks=true|false` (default true), `system_defined=true|false`.
+
+Benchmarks are returned as part of the provider response. There is no separate `/benchmarks` endpoint.
+
+### Collections
+
+```
+GET    /api/v1/evaluations/collections             # List collections
+POST   /api/v1/evaluations/collections             # Create collection
+GET    /api/v1/evaluations/collections/{id}        # Get collection
+PUT    /api/v1/evaluations/collections/{id}        # Update collection
+PATCH  /api/v1/evaluations/collections/{id}        # Patch collection
+DELETE /api/v1/evaluations/collections/{id}        # Delete collection
+```
+
+### Health and Metrics
+
 ```
 GET /api/v1/health    # Health check
 GET /metrics          # Prometheus metrics
+GET /openapi.yaml     # OpenAPI specification
+GET /docs             # Interactive API docs
 ```
-
-See [API Reference](api-reference.md) for complete endpoint documentation.
 
 ## Configuration
 
-Configuration loads from multiple sources with precedence: base configuration from `config/config.yaml`, environment variable overrides, and secrets from files for sensitive data.
+Configuration loads from `config/config.yaml`, with environment variable and file-based secret overrides.
 
-### Example Configuration
+### Key Settings
 
-**config/config.yaml**:
-```yaml
-service:
-  port: 8080
+| Setting | Env Var | Default | Description |
+|---------|---------|---------|-------------|
+| `service.port` | `PORT` | `8080` | API listen port |
+| `database.driver` | - | `sqlite` | `sqlite` or `pgx` |
+| `database.url` | `DB_URL` | SQLite in-memory | Connection string |
+| `mlflow.tracking_uri` | `MLFLOW_TRACKING_URI` | - | MLflow server URL |
+| `prometheus.enabled` | - | `true` | Enable `/metrics` |
+| `otel.enabled` | - | `false` | Enable OpenTelemetry |
 
-database:
-  host: localhost
-  port: 5432
-  name: eval_hub
-  user: eval_hub
+### Provider Configuration
 
-env:
-  mappings:
-    service.port: PORT
-    database.host: DB_HOST
+Providers are loaded from YAML files in `config/providers/`. Built-in providers: `lm_evaluation_harness` (167 benchmarks), `garak` (8), `guidellm` (7), `lighteval` (24).
 
-secrets:
-  dir: /var/secrets
-  mappings:
-    database.password: db_password
-```
+Custom providers can be added via YAML files or the `POST /api/v1/evaluations/providers` endpoint.
 
-See [Configuration](configuration.md) for comprehensive reference.
+## Runtimes
 
-## Observability
+### Kubernetes (default)
 
-### Logging
+Creates a Kubernetes Job per benchmark with:
 
-The server uses structured JSON logging with automatic request enrichment, including timestamp, log level, message, request correlation ID, HTTP method and path, and client details. Each log entry captures the full request context for debugging and tracing.
+- **ConfigMap**: JobSpec mounted at `/meta/job.json`
+- **Adapter container**: Runs the evaluation framework
+- **Sidecar container**: Forwards status events to the server
+- **Volumes**: OCI credentials, MLflow token, model auth secrets
 
-### Health Checks
+### Local
 
-The server provides health check endpoints at `/api/v1/health` for Kubernetes liveness and readiness probes, verifying server responsiveness and database connectivity to ensure the pod is ready to receive traffic.
+Spawns subprocesses (up to 5 workers) for each benchmark. Enabled with the `-local` flag. Useful for development without a cluster.
+
+## Deployment
+
+The server is deployed by the [TrustyAI Operator](https://github.com/trustyai-explainability/trustyai-service-operator) via the `EvalHub` custom resource. See [OpenShift Setup](../development/openshift-setup.md) for production deployment.
 
 ## Next Steps
 
-- [API Reference](api-reference.md) - Complete API documentation
+- [Python SDK](../reference/sdk-client.md) - Client reference
+- [Architecture](../development/architecture.md) - Adapter architecture
+- [OpenShift Setup](../development/openshift-setup.md) - Production deployment

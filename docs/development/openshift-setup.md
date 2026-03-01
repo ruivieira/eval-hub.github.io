@@ -826,10 +826,9 @@ oc get events -n evalhub-test --sort-by='.lastTimestamp'
 
 ## Next Steps
 
-- [Creating Adapters](creating-adapters.md) - Build custom evaluation providers
-- [Architecture](architecture.md) - Understand EvalHub architecture
-- [API Reference](../reference/api.md) - REST API documentation
-- [TrustyAI Operator Documentation](https://github.com/trustyai-explainability/trustyai-service-operator) - Operator details
+- [Architecture](architecture.md) - Adapter architecture
+- [Python SDK](../reference/sdk-client.md) - Client and adapter reference
+- [TrustyAI Operator](https://github.com/trustyai-explainability/trustyai-service-operator) - Operator documentation
 
 ## Additional Resources
 

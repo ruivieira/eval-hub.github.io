@@ -1,0 +1,54 @@
+# GuideLLM adapter architecture
+direction: down
+
+*.style.shadow: true
+*.style.stroke: "#404040"
+*.style.fill: "#f5f5f5"
+*.style.border-radius: 4
+
+evalhub: "EvalHub Server" {
+  style.fill: "#ddd"
+  direction: right
+  api: "REST API"
+  orch: "Job Orchestrator"
+}
+
+k8s: "Kubernetes / OpenShift" {
+  style.fill: "#e8e8e8"
+  direction: right
+
+  cm: "ConfigMap\n/meta/job.json"
+  pod: "GuideLLM Job Pod" {
+    adapter: "GuideLLM Adapter" {
+      load: "1. Load JobSpec"
+      run: "2. Run GuideLLM\n(rate sweeps, load profiles)"
+      parse: "3. Parse (TTFT, ITL, throughput)"
+      report: "4. Report via callbacks"
+
+      load -> run
+      run -> parse
+      parse -> report
+    }
+    sidecar: Sidecar
+  }
+}
+
+external: External {
+  style.fill: "#ddd"
+  direction: right
+  model: "Model Endpoint\nvLLM / TGI"
+  oci: "OCI Registry"
+  mlflow: MLflow
+}
+
+evalhub.orch -> k8s.cm: creates { style.border-radius: 8 }
+evalhub.orch -> k8s.pod: "creates Job" { style.border-radius: 8 }
+k8s.cm -> k8s.pod.adapter: mounted { style.border-radius: 8 }
+k8s.pod.adapter.run -> external.model: "benchmark requests" { style.border-radius: 8 }
+k8s.pod.adapter.report -> k8s.pod.sidecar: callbacks { style.border-radius: 8 }
+k8s.pod.sidecar -> evalhub.api: "POST /events" {
+  style.stroke-dash: 3
+  style.border-radius: 8
+}
+k8s.pod.adapter -> external.oci: "push artifacts" { style.border-radius: 8 }
+k8s.pod.adapter -> external.mlflow: "log metrics" { style.border-radius: 8 }

@@ -22,21 +22,7 @@ GuideLLM is a performance benchmarking platform designed to evaluate language mo
 
 The adapter follows the eval-hub framework adapter pattern with automatic configuration:
 
-```mermaid
-graph TD
-    A[ConfigMap<br/>JobSpec] -->|mounted at /meta/job.json| B[Kubernetes Job Pod]
-    B --> C[Adapter Container]
-    B --> D[Sidecar Container]
-
-    C -->|1. Load JobSpec| C
-    C -->|2. Run GuideLLM| C
-    C -->|3. Parse Results| C
-    C -->|4. Report via callbacks| D
-
-    D -->|Receive status| D
-    D -->|Persist artifacts| D
-    D -->|Store in OCI registry| E[OCI Registry]
-```
+![GuideLLM adapter architecture](../../images/diagrams/guidellm-architecture.svg)
 
 **Workflow:**
 
