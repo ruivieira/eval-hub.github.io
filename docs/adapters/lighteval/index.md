@@ -26,21 +26,7 @@ LightEval is a lightweight evaluation framework for language models that support
 
 The adapter follows the eval-hub framework adapter pattern:
 
-```mermaid
-graph TD
-    A[ConfigMap<br/>JobSpec] -->|mounted at /meta/job.json| B[Kubernetes Job Pod]
-    B --> C[Adapter Container]
-    B --> D[Sidecar Container]
-
-    C -->|1. Load JobSpec| C
-    C -->|2. Run LightEval| C
-    C -->|3. Parse Results| C
-    C -->|4. Report via callbacks| D
-
-    D -->|Receive status| D
-    D -->|Persist artifacts| D
-    D -->|Store in OCI registry| E[OCI Registry]
-```
+![LightEval adapter architecture](../../images/diagrams/lighteval-architecture.svg)
 
 ## Quick Start
 

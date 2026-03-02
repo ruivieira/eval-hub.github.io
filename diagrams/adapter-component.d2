@@ -1,0 +1,33 @@
+# Adapter component diagram (development/architecture)
+direction: right
+
+*.style.shadow: true
+*.style.stroke: "#404040"
+*.style.fill: "#f5f5f5"
+*.style.border-radius: 4
+
+job_spec: "JobSpec\n/meta/job.json"
+adapter: "FrameworkAdapter\nrun_benchmark_job()"
+framework: "Framework CLI/SDK"
+parser: "Results Parser"
+job_results: "JobResults"
+callbacks: DefaultCallbacks
+sidecar: "Sidecar\n(localhost)"
+registry: "OCI Registry"
+mlflow: "MLflow"
+
+job_spec -> adapter: "loads config" { style.border-radius: 8 }
+adapter -> framework: "run evaluation" { style.border-radius: 8 }
+framework -> parser: "raw output" { style.border-radius: 8 }
+parser -> job_results: "structured metrics" { style.border-radius: 8 }
+adapter -> callbacks: "report_status()\nreport_results()" { style.border-radius: 8 }
+callbacks -> sidecar: "POST /events" {
+  style.stroke-dash: 3
+  style.border-radius: 8
+}
+adapter -> callbacks: "create_oci_artifact()" { style.border-radius: 8 }
+callbacks -> registry: "OCI push\n(oras)" { style.border-radius: 8 }
+callbacks -> mlflow: "report_metrics\n_to_mlflow()" {
+  style.stroke-dash: 3
+  style.border-radius: 8
+}
