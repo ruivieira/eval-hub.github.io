@@ -51,7 +51,11 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -78,6 +82,7 @@ nav:
   - Development:
     - Architecture: development/architecture.md
     - OpenShift Setup: development/openshift-setup.md
+    - Multi-Tenancy: development/multi-tenancy.md
   - Reference:
     - Python SDK: reference/sdk-client.md
 
