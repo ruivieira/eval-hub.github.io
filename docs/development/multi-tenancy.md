@@ -71,149 +71,38 @@ The operator automatically creates:
 | ClusterRoleBinding for auth-reviewer | cluster-wide | Allows SAR and TokenReview checks |
 | RoleBindings for jobs-writer, job-config | `opendatahub` | Allows creating Jobs and ConfigMaps |
 
-## Step 2: Create tenant namespaces
+## Step 2: Register tenant namespaces with the operator
 
-Create a namespace for each tenant:
+Create a namespace for each tenant and label it so the TrustyAI Operator's **namespace watcher** provisions job resources and RBAC automatically:
 
 ```bash
 oc create namespace team-a
 oc create namespace team-b
+
+# Label each namespace as an EvalHub tenant (value can be empty or e.g. "true")
+oc label namespace team-a evalhub.trustyai.opendatahub.io/tenant=
+oc label namespace team-b evalhub.trustyai.opendatahub.io/tenant=
 ```
 
-## Step 3: Create job ServiceAccounts in tenant namespaces
+The operator watches for namespaces with the label `evalhub.trustyai.opendatahub.io/tenant`. When it sees a labelled namespace (other than the EvalHub instance namespace), it automatically creates in that namespace:
 
-The operator creates a job SA and its RBAC bindings in the **EvalHub instance namespace** automatically during reconciliation. However, it does not yet create them in tenant namespaces — this must be done manually for each tenant.
+| Resource | Purpose |
+|----------|---------|
+| Job ServiceAccount (`{evalhub-name}-{evalhub-namespace}-job`) | Identity for evaluation job pods |
+| Job access Role + RoleBinding | Allows job pods to create `status-events` |
+| jobs-writer RoleBinding | Binds EvalHub API SA to `evalhub-jobs-writer` ClusterRole (create/delete Jobs) |
+| job-config RoleBinding | Binds EvalHub API SA to `evalhub-job-config` ClusterRole (ConfigMaps) |
+| MLFlow job RoleBinding | Binds job SA to `evalhub-mlflow-jobs-access` ClusterRole |
+| Service CA ConfigMap | For TLS callbacks from job pods to EvalHub (OpenShift service CA injection) |
 
-!!! info "What the operator creates automatically"
-    In the **instance namespace** (e.g. `opendatahub`), the controller creates: the `evalhub-service` SA, the `evalhub-opendatahub-job` SA, all RoleBindings (jobs-writer, job-config, job-access, MLFlow), and the auth-reviewer ClusterRoleBinding. You do **not** need to create these manually.
+!!! info "Instance namespace"
+    In the **EvalHub instance namespace** (e.g. `opendatahub`), the controller also creates the `evalhub-service` SA, the job SA, all RoleBindings, and the auth-reviewer ClusterRoleBinding. You do **not** need to create these manually. Labelling the instance namespace as a tenant is unnecessary and is skipped by the watcher.
 
-For each **tenant namespace**, create the job ServiceAccount and its RoleBindings:
+If you remove the tenant label from a namespace, the operator will clean up the job-related resources from that namespace.
 
-```bash
-EVALHUB_NAME=evalhub
-EVALHUB_NS=opendatahub
-TENANT_NS=team-a
+## Step 3: Create tenant users
 
-# Job SA name follows the pattern: {evalhub-name}-{evalhub-namespace}-job
-JOB_SA_NAME="${EVALHUB_NAME}-${EVALHUB_NS}-job"
-```
-
-**Create the job ServiceAccount:**
-
-```bash
-oc apply -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ${JOB_SA_NAME}
-  namespace: ${TENANT_NS}
-  labels:
-    app.kubernetes.io/part-of: eval-hub
-    eval-hub.trustyai.opendatahub.io: ${EVALHUB_NAME}.${EVALHUB_NS}
-EOF
-```
-
-**Create the job access Role (status-events only):**
-
-```bash
-oc apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: ${EVALHUB_NAME}-${EVALHUB_NS}-job-access-role
-  namespace: ${TENANT_NS}
-rules:
-  - apiGroups: [trustyai.opendatahub.io]
-    resources: [status-events]
-    verbs: [create]
-EOF
-```
-
-**Bind the job SA to the access Role:**
-
-```bash
-oc apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ${EVALHUB_NAME}-${EVALHUB_NS}-job-access-rb
-  namespace: ${TENANT_NS}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: ${EVALHUB_NAME}-${EVALHUB_NS}-job-access-role
-subjects:
-  - kind: ServiceAccount
-    name: ${JOB_SA_NAME}
-    namespace: ${TENANT_NS}
-EOF
-```
-
-**Bind the job SA to the jobs-writer ClusterRole** (so the EvalHub API can create jobs in the tenant namespace):
-
-```bash
-oc apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ${EVALHUB_NAME}-job-writer-rb
-  namespace: ${TENANT_NS}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: evalhub-jobs-writer
-subjects:
-  - kind: ServiceAccount
-    name: evalhub-service
-    namespace: ${EVALHUB_NS}
-EOF
-```
-
-**Bind the job SA to the job-config ClusterRole** (for ConfigMap management):
-
-```bash
-oc apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ${EVALHUB_NAME}-job-config-rb
-  namespace: ${TENANT_NS}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: evalhub-job-config
-subjects:
-  - kind: ServiceAccount
-    name: evalhub-service
-    namespace: ${EVALHUB_NS}
-EOF
-```
-
-**If using MLFlow, bind the job SA to the MLFlow jobs ClusterRole:**
-
-```bash
-oc apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ${EVALHUB_NAME}-${EVALHUB_NS}-mlflow-job-rb
-  namespace: ${TENANT_NS}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: evalhub-mlflow-jobs-access
-subjects:
-  - kind: ServiceAccount
-    name: ${JOB_SA_NAME}
-    namespace: ${TENANT_NS}
-EOF
-```
-
-Repeat for each tenant namespace (`team-b`, etc.).
-
-## Step 4: Create tenant users
-
-Each tenant needs a ServiceAccount (or user) with permissions scoped to their namespace. This is the identity that API consumers use to authenticate.
+The operator provisions the **job** ServiceAccount and RBAC in each labelled namespace. You still need to create a **tenant user** identity (ServiceAccount or user) and bind it to evaluation permissions. This is the identity that API consumers use to authenticate when calling the EvalHub API.
 
 **Create a tenant ServiceAccount:**
 
@@ -263,7 +152,7 @@ EOF
 !!! info "Virtual resources"
     The resources in the Role (`evaluations`, `collections`, `providers`, `status-events`) are virtual -- they don't correspond to actual Kubernetes API resources. EvalHub uses them as SAR targets to enforce fine-grained access control via the Kubernetes authorisation API.
 
-## Step 5: Access the API with tenant scoping
+## Step 4: Access the API with tenant scoping
 
 All evaluation API requests must include the `X-Tenant` header set to the target namespace.
 
@@ -376,18 +265,19 @@ sequenceDiagram
 | `evalhub-mlflow-access` | API server MLFlow access | `experiments` (create, get, list, update, delete) |
 | `evalhub-mlflow-jobs-access` | Job pod MLFlow access | `experiments` (create, get, list) |
 
-### Per-tenant resources
+### Per-tenant resources (operator-provisioned)
 
-For each tenant namespace, the following resources are required:
+For each namespace labelled with `evalhub.trustyai.opendatahub.io/tenant`, the operator creates:
 
 | Resource | Name pattern | Purpose |
 |----------|-------------|---------|
 | ServiceAccount | `{name}-{evalhub-ns}-job` | Identity for job pods |
 | Role | `{name}-{evalhub-ns}-job-access-role` | Allows `status-events/create` |
 | RoleBinding | `{name}-{evalhub-ns}-job-access-rb` | Binds job SA to access Role |
-| RoleBinding | `{name}-job-writer-rb` | Binds API SA to jobs-writer ClusterRole |
-| RoleBinding | `{name}-job-config-rb` | Binds API SA to job-config ClusterRole |
+| RoleBinding | `{name}-{tenant-ns}-job-writer-rb` | Binds API SA to jobs-writer ClusterRole |
+| RoleBinding | `{name}-{tenant-ns}-job-config-rb` | Binds API SA to job-config ClusterRole |
 | RoleBinding | `{name}-{evalhub-ns}-mlflow-job-rb` | Binds job SA to MLFlow ClusterRole |
+| ConfigMap | `{name}-service-ca` | Service CA for TLS (OpenShift) |
 
 ### ServiceAccount naming
 
@@ -405,13 +295,18 @@ evalhub-opendatahub-job
 
 ## Verifying the setup
 
-### Check RBAC is in place
+### Check operator-provisioned resources
+
+After labelling a namespace with `evalhub.trustyai.opendatahub.io/tenant`, the operator should create the job SA and RoleBindings within a short time. Verify:
 
 ```bash
-# Verify job SA exists in tenant namespace
+# Ensure the namespace has the tenant label
+oc get namespace team-a --show-labels | grep evalhub.trustyai.opendatahub.io/tenant
+
+# Verify job SA exists in tenant namespace (created by operator)
 oc get sa evalhub-opendatahub-job -n team-a
 
-# Verify RoleBindings
+# Verify RoleBindings (created by operator)
 oc get rolebindings -n team-a | grep evalhub
 
 # Test permissions for tenant user
