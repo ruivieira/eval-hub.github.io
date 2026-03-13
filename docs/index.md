@@ -69,6 +69,7 @@ result = client.jobs.wait_for_completion(job.id)
 - [Overview](getting-started/overview.md) - Architecture and core concepts
 - [Installation](getting-started/installation.md) - Install server and SDK
 - [Quick Start](getting-started/quickstart.md) - Run your first evaluation
+- [Model authentication](getting-started/model-authentication.md) - API key, CA cert, and ServiceAccount token
 - [Using custom data](getting-started/custom-data.md) - Using custom benchmark test data
 - [Python SDK Reference](reference/sdk-client.md) - Client and adapter API
 

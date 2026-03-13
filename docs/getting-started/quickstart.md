@@ -181,6 +181,7 @@ When the evaluation completes, the adapter pushes an OCI Artifact to the specifi
 ## Next Steps
 
 - [Installation](installation.md) - Full installation guide
+- [Model authentication](model-authentication.md) - API key, CA cert, and ServiceAccount token for model endpoints
 - [Using custom data](custom-data.md) - Using custom benchmark test data
 - [Architecture](../development/architecture.md) - Adapter architecture
 - [Python SDK](../reference/sdk-client.md) - Complete SDK reference
