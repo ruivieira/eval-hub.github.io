@@ -133,19 +133,85 @@ oc label namespace evalhub-test \
 
 ### 2. Deploy EvalHub Instance
 
-Create an EvalHub custom resource:
+EvalHub requires an explicit database configuration via `spec.database.type`. Choose SQLite for development and testing, or PostgreSQL for production.
 
-```bash
-oc apply -f - <<EOF
-apiVersion: trustyai.opendatahub.io/v1alpha1
-kind: EvalHub
-metadata:
-  name: evalhub
-  namespace: evalhub-test
-spec:
-  replicas: 1
-EOF
-```
+=== "SQLite (development/testing)"
+
+    SQLite runs in-process with no external database required. The operator configures an in-memory SQLite database automatically — no Secret is needed. Data is lost when the pod restarts.
+
+    ```bash
+    oc apply -f - <<EOF
+    apiVersion: trustyai.opendatahub.io/v1alpha1
+    kind: EvalHub
+    metadata:
+      name: evalhub
+      namespace: evalhub-test
+    spec:
+      replicas: 1
+      database:
+        type: sqlite
+      providers:
+        - lm-evaluation-harness
+        - garak
+        - guidellm
+        - lighteval
+        - ragas
+      collections:
+        - leaderboard-v2
+    EOF
+    ```
+
+=== "PostgreSQL (production)"
+
+    PostgreSQL provides durable, persistent storage. Create a Secret containing the connection URL first, then reference it in the CR.
+
+    ```bash
+    oc apply -f - <<EOF
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: evalhub-db-credentials
+      namespace: evalhub-test
+    type: Opaque
+    stringData:
+      db-url: "postgres://user:password@db-host:5432/evalhub"
+    EOF
+
+    oc apply -f - <<EOF
+    apiVersion: trustyai.opendatahub.io/v1alpha1
+    kind: EvalHub
+    metadata:
+      name: evalhub
+      namespace: evalhub-test
+    spec:
+      replicas: 1
+      database:
+        type: postgresql
+        secret: evalhub-db-credentials
+      providers:
+        - lm-evaluation-harness
+        - garak
+        - guidellm
+        - lighteval
+        - ragas
+      collections:
+        - leaderboard-v2
+    EOF
+    ```
+
+#### EvalHub Custom Resource Spec
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `spec.replicas` | No | Number of EvalHub server replicas. Default: `1`. |
+| `spec.database.type` | **Yes** | Database backend. `sqlite` for in-memory development/testing (no external database needed); `postgresql` for production. |
+| `spec.database.secret` | When `type: postgresql` | Name of a Kubernetes `Secret` in the same namespace containing a `db-url` key with the PostgreSQL connection string (e.g. `postgres://user:pass@host:5432/evalhub`). Ignored for SQLite. |
+| `spec.database.maxOpenConns` | No | Maximum open database connections (PostgreSQL only). Default: `25`. |
+| `spec.database.maxIdleConns` | No | Maximum idle database connections (PostgreSQL only). Default: `5`. |
+| `spec.providers` | No | List of built-in provider names to enable. Defaults to `garak`, `guidellm`, `lighteval`, `lm-evaluation-harness` when omitted. |
+| `spec.collections` | No | List of built-in collection names to expose (e.g. `leaderboard-v2`). |
+| `spec.env` | No | Additional environment variables injected into the EvalHub server container, as a list of `name`/`value` pairs. |
+| `spec.otel` | No | OpenTelemetry configuration. See [Architecture](architecture.md) for details. |
 
 ### 3. Verify Deployment
 
@@ -393,6 +459,8 @@ metadata:
   namespace: evalhub-test
 spec:
   replicas: 1
+  database:
+    type: sqlite
 EOF
 
 # Check if custom changes are applied
@@ -501,6 +569,8 @@ metadata:
   namespace: evalhub-test
 spec:
   replicas: 1
+  database:
+    type: sqlite
 EOF
 ```
 
