@@ -28,6 +28,7 @@ providers = client.providers.list()
     ```bash
     kubectl apply -f https://github.com/trustyai-explainability/trustyai-service-operator/releases/latest/download/trustyai-operator.yaml
 
+    # SQLite (development/testing): no external database needed.
     kubectl apply -f - <<EOF
     apiVersion: trustyai.opendatahub.io/v1alpha1
     kind: EvalHub
@@ -36,8 +37,48 @@ providers = client.providers.list()
       namespace: evalhub
     spec:
       replicas: 1
+      database:
+        type: sqlite
+      providers:
+        - lm-evaluation-harness
+        - garak
+        - guidellm
+      collections:
+        - leaderboard-v2
+    EOF
+
+    # PostgreSQL (production): create the credentials secret first, then the CR.
+    kubectl apply -f - <<EOF
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: evalhub-db-credentials
+      namespace: evalhub
+    type: Opaque
+    stringData:
+      db-url: "postgres://user:password@db-host:5432/evalhub"
+    EOF
+    kubectl apply -f - <<EOF
+    apiVersion: trustyai.opendatahub.io/v1alpha1
+    kind: EvalHub
+    metadata:
+      name: evalhub
+      namespace: evalhub
+    spec:
+      replicas: 1
+      database:
+        type: postgresql
+        secret: evalhub-db-credentials
+      providers:
+        - lm-evaluation-harness
+        - garak
+        - guidellm
+      collections:
+        - leaderboard-v2
     EOF
     ```
+
+    See [OpenShift Setup](../development/openshift-setup.md#evalhub-custom-resource-spec) for a full description of all `spec` fields.
 
 === "Local Development"
 
