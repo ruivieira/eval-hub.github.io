@@ -88,6 +88,8 @@ nav:
     - Multi-Tenancy: development/multi-tenancy.md
   - Reference:
     - Python SDK: reference/sdk-client.md
+  - Build Details:
+    - CVE fixer: build-details/cve-fixer.md
 
 extra_css:
   - stylesheets/extra.css

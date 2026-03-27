@@ -6,6 +6,8 @@ Go REST API service for managing LLM evaluation workflows.
 
 All endpoints are under `/api/v1`. Request and response bodies use JSON. The OpenAPI 3.1.0 specification is served at `/openapi.yaml`.
 
+See <https://eval-hub.github.io/eval-hub/> for the full specification.
+
 ### Evaluation Jobs
 
 ```
@@ -27,7 +29,7 @@ PATCH  /api/v1/evaluations/providers/{id}        # Patch provider
 DELETE /api/v1/evaluations/providers/{id}        # Delete provider
 ```
 
-Query parameters: `benchmarks=true|false` (default true), `system_defined=true|false`.
+Query parameters: `benchmarks=true|false` (default `true`), `scope=system|tenant` (default is not set which means all providers).
 
 Benchmarks are returned as part of the provider response. There is no separate `/benchmarks` endpoint.
 
