@@ -602,7 +602,7 @@ cat > eval-request.json <<EOF
 {
   "model": {
     "url": "http://vllm-server.models.svc.cluster.local:8000/v1",
-    "name": "meta-llama/Llama-3.2-1B-Instruct"
+    "name": "Qwen/Qwen3.5-397B-A17B"
   },
   "benchmarks": [
     {
@@ -634,29 +634,26 @@ curl -sS -k -X POST \
 
 For specific testing purposes when the Model's answers quality is not relevant, you can deploy an OpenAI-compatible inference simulator instead of a real model server.
 
-Deploy the simulator with:
+Deploy the simulator in the currently active namespace with:
 
 ```bash
-curl -s https://raw.githubusercontent.com/tarilabs/llm-d-inference-sim/refs/heads/patch-1/manifests/deployment.yaml | yq '.spec.replicas = 1' | oc apply -f -
+curl -s https://raw.githubusercontent.com/llm-d/llm-d-inference-sim/refs/heads/main/manifests/deployment.yaml \
+  | yq 'select(.kind == "Deployment").spec.replicas = 1 | select(.kind == "Deployment").spec.template.spec.containers[0].image |= sub(":dev$", ":latest")' \
+  | oc apply -f -  
 ```
-
-!!! note
-
-    The `patch-1` branch is used until [llm-d/llm-d-inference-sim#348](https://github.com/llm-d/llm-d-inference-sim/pull/348) is resolved to fix the standard example.
-    See the upstream [llm-d testing documentation](https://github.com/llm-d/llm-d-inference-sim?tab=readme-ov-file#kubernetes-testing) for more details.
 
 This makes the simulator available as an internal service at:
 
-- **Service:** `vllm-llama3-8b-instruct-svc.evalhub-test.svc.cluster.local` (Accessible within the cluster and the namespace only)
+- **Service:** `vllm-sim-demo-svc.evalhub-test.svc.cluster.local` (Accessible within the cluster and the namespace only)
 - **Port:** `8000`
-- **Model name:** `meta-llama/Llama-3.1-8B-Instruct`
+- **Model name:** `Qwen/Qwen3.5-397B-A17B`
 
 The service exposes an OpenAI-compatible endpoint (e.g. `/v1/chat/completions`).
 
 You can verify the simulator is working from within the namesapce in the cluster (for example by opening a Terminal on the evalhub Pod) with:
 
 ```sh
-export SIM_URL=vllm-llama3-8b-instruct-svc.evalhub-test.svc.cluster.local:8000
+export SIM_URL=vllm-sim-demo-svc.evalhub-test.svc.cluster.local:8000
 
 # List available models
 curl -s "http://$SIM_URL/v1/models" 
@@ -665,7 +662,7 @@ curl -s "http://$SIM_URL/v1/models"
 curl -s "http://$SIM_URL/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "model": "Qwen/Qwen3.5-397B-A17B",
     "messages": [{"role": "user", "content": "Hello"}]
   }' 
 ```
@@ -675,7 +672,7 @@ curl -s "http://$SIM_URL/v1/chat/completions" \
 If you need to invoke the simulator externally, create a Route in the OpenShift console:
 
 1. Navigate to **Networking → Routes → Create Route**
-2. Select the **Service** `vllm-llama3-8b-instruct-svc`
+2. Select the **Service** `vllm-sim-demo-svc`
 3. Select the only available **Target Port**
 4. Check **Secure Route**
 5. Set **TLS Termination** to **Edge**
@@ -684,7 +681,7 @@ If you need to invoke the simulator externally, create a Route in the OpenShift 
 Once the Route is created, you can test it:
 
 ```sh
-export SIM_URL=$(oc get route -n evalhub-test -o jsonpath='{.items[?(@.spec.to.name=="vllm-llama3-8b-instruct-svc")].spec.host}')
+export SIM_URL=$(oc get route -n evalhub-test -o jsonpath='{.items[?(@.spec.to.name=="vllm-sim-demo-svc")].spec.host}')
 
 # List available models
 curl -s "https://$SIM_URL/v1/models" | jq .
@@ -693,7 +690,7 @@ curl -s "https://$SIM_URL/v1/models" | jq .
 curl -s "https://$SIM_URL/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "model": "Qwen/Qwen3.5-397B-A17B",
     "messages": [{"role": "user", "content": "Hello"}]
   }' | jq .
 ```
