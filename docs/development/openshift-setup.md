@@ -589,9 +589,9 @@ TOKEN=$(oc whoami -t)
 curl -sS -k -H "Authorization: Bearer $TOKEN" \
   "https://$EVALHUB_URL/api/v1/evaluations/providers" | jq .
 
-# List benchmarks for a specific provider
+# Get a specific provider (includes benchmarks by default)
 curl -sS -k -H "Authorization: Bearer $TOKEN" \
-  "https://$EVALHUB_URL/api/v1/evaluations/providers?id=lm_evaluation_harness" | jq .
+  "https://$EVALHUB_URL/api/v1/evaluations/providers/lm_evaluation_harness" | jq .
 ```
 
 **Submit a test evaluation:**
