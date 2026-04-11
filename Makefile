@@ -8,46 +8,40 @@ help:
 	@echo "  install    - Install documentation dependencies"
 	@echo "  serve      - Start local development server"
 	@echo "  build      - Build documentation site"
-	@echo "  deploy     - Deploy to GitHub Pages"
 	@echo "  clean      - Remove built documentation"
 	@echo "  diagrams   - Generate all diagrams from D2 sources"
 
 # Install dependencies
 install:
-	@echo "📦 Installing documentation dependencies..."
-	pip install -r requirements.txt
+	@echo "Installing documentation dependencies..."
+	npm install
 
 # Serve documentation locally
 serve:
-	@echo "🚀 Starting documentation server..."
-	@echo "📖 Documentation will be available at http://0.0.0.0:8000"
-	mkdocs serve --dev-addr 0.0.0.0:8000
+	@echo "Starting documentation server..."
+	npm run dev
 
 # Build documentation
 build:
-	@echo "🔨 Building documentation..."
-	mkdocs build
-
-# Deploy to GitHub Pages
-deploy:
-	@echo "🚀 Deploying to GitHub Pages..."
-	mkdocs gh-deploy --force
+	@echo "Building documentation..."
+	npm run build
 
 # Clean built documentation
 clean:
-	@echo "🧹 Cleaning built documentation..."
-	rm -rf site/
+	@echo "Cleaning built documentation..."
+	rm -rf dist/ .astro/
 
 # Generate all diagrams from D2 sources (requires d2: https://d2lang.com/)
 diagrams:
-	@echo "📐 Generating diagrams from D2 sources..."
-	@mkdir -p docs/images/diagrams
+	@echo "Generating diagrams from D2 sources..."
+	@mkdir -p public/images/diagrams
 	@for f in diagrams/*.d2; do \
 		name=$$(basename "$$f" .d2); \
 		echo "  $$name.svg"; \
-		d2 -l elk --pad 50 "$$f" "docs/images/diagrams/$$name.svg"; \
+		d2 -l elk --pad 50 "$$f" "public/images/diagrams/$$name.svg"; \
 	done
-	@echo "✅ All diagrams generated in docs/images/diagrams/"
+	@echo "All diagrams generated in public/images/diagrams/"
 
 # Build and serve
-preview: build serve
+preview: build
+	npm run preview

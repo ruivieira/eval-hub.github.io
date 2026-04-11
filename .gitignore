@@ -1,6 +1,13 @@
 # MkDocs build output
 site/
 
+# Astro build output
+dist/
+.astro/
+
+# Node
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]

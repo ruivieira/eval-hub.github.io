@@ -1,0 +1,390 @@
+---
+title: "Configuration Examples"
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Complete examples for common GuideLLM benchmarking scenarios.
+
+## Quick Test
+
+Fast validation with minimal samples:
+
+```json
+{
+  "job_id": "guidellm-quick-001",
+  "benchmark_id": "performance_quick",
+  "model": {
+    "url": "http://127.0.0.1:8000/v1",
+    "name": "Qwen/Qwen2.5-1.5B-Instruct"
+  },
+  "benchmark_config": {
+    "profile": "constant",
+    "rate": 5,
+    "max_seconds": 10,
+    "max_requests": 20,
+    "data": "prompt_tokens=50,output_tokens=20",
+    "request_type": "chat_completions",
+    "warmup": "0",
+    "detect_saturation": false
+  },
+  "experiment_name": "qwen-quick-test",
+  "tags": {
+    "framework": "guidellm",
+    "model_size": "small",
+    "evaluation_type": "performance"
+  },
+  "timeout_seconds": 60
+}
+```
+
+**Duration**: ~10 seconds
+**Use case**: Quick validation, CI/CD testing
+
+---
+
+## Performance Sweep
+
+Automatically explore request rates:
+
+```json
+{
+  "job_id": "guidellm-sweep-001",
+  "benchmark_id": "performance_sweep",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "Qwen/Qwen2.5-1.5B-Instruct"
+  },
+  "benchmark_config": {
+    "profile": "sweep",
+    "max_seconds": 30,
+    "max_requests": 100,
+    "data": "prompt_tokens=256,output_tokens=128",
+    "warmup": "5%",
+    "detect_saturation": true
+  },
+  "experiment_name": "qwen-capacity-discovery",
+  "tags": {
+    "test_type": "discovery",
+    "purpose": "capacity_planning"
+  },
+  "timeout_seconds": 120
+}
+```
+
+**Duration**: ~30 seconds
+**Use case**: Initial capacity discovery, finding safe operating range
+
+---
+
+## Constant Load Test
+
+Steady-state performance measurement:
+
+```json
+{
+  "job_id": "guidellm-constant-001",
+  "benchmark_id": "performance_constant",
+  "model": {
+    "url": "http://production.example.com/v1",
+    "name": "llama-2-7b-chat"
+  },
+  "benchmark_config": {
+    "profile": "constant",
+    "rate": 10,
+    "max_seconds": 300,
+    "max_requests": 3000,
+    "data": "hf:abisee/cnn_dailymail",
+    "data_args": {"name": "3.0.0"},
+    "data_column_mapper": {"text_column": "article"},
+    "data_samples": 500,
+    "warmup": "5%",
+    "cooldown": "5%"
+  },
+  "experiment_name": "llama-production-baseline",
+  "tags": {
+    "environment": "production",
+    "test_type": "baseline"
+  },
+  "timeout_seconds": 600
+}
+```
+
+**Duration**: 5 minutes
+**Use case**: Production baseline, SLA validation
+
+---
+
+## Throughput Test
+
+Maximum capacity testing:
+
+```json
+{
+  "job_id": "guidellm-throughput-001",
+  "benchmark_id": "max_throughput",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "gpt-3.5-turbo"
+  },
+  "benchmark_config": {
+    "profile": "throughput",
+    "max_seconds": 60,
+    "max_requests": 5000,
+    "data": "prompt_tokens=512,output_tokens=256",
+    "warmup": "10%",
+    "max_error_rate": 0.1
+  },
+  "experiment_name": "gpt35-max-capacity",
+  "tags": {
+    "test_type": "stress",
+    "purpose": "capacity_limit"
+  },
+  "timeout_seconds": 180
+}
+```
+
+**Duration**: 1 minute + warmup
+**Use case**: Stress testing, capacity planning
+
+---
+
+## Concurrent Users
+
+Simulate parallel user load:
+
+```json
+{
+  "job_id": "guidellm-concurrent-001",
+  "benchmark_id": "concurrent_users",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "llama-2-13b"
+  },
+  "benchmark_config": {
+    "profile": "concurrent",
+    "rate": 25,
+    "max_requests": 500,
+    "max_seconds": 120,
+    "data": "prompt_tokens=512,output_tokens=256",
+    "warmup": "5%"
+  },
+  "experiment_name": "llama-concurrent-load",
+  "tags": {
+    "test_type": "concurrency",
+    "concurrent_users": 25
+  },
+  "timeout_seconds": 300
+}
+```
+
+**Duration**: 2 minutes
+**Use case**: User simulation, concurrency testing
+
+---
+
+## Poisson Distribution
+
+Realistic production traffic pattern:
+
+```json
+{
+  "job_id": "guidellm-poisson-001",
+  "benchmark_id": "poisson_traffic",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "mistral-7b"
+  },
+  "benchmark_config": {
+    "profile": "poisson",
+    "rate": 15,
+    "max_seconds": 180,
+    "data": "hf:openai/gsm8k",
+    "data_args": {"name": "main"},
+    "data_column_mapper": {"text_column": "question"},
+    "data_samples": 1000,
+    "warmup": "5%",
+    "detect_saturation": true
+  },
+  "experiment_name": "mistral-realistic-load",
+  "tags": {
+    "test_type": "realistic",
+    "traffic_pattern": "poisson"
+  },
+  "timeout_seconds": 400
+}
+```
+
+**Duration**: 3 minutes
+**Use case**: Production simulation, realistic load testing
+
+---
+
+## Synchronous Baseline
+
+Single-user minimum latency:
+
+```json
+{
+  "job_id": "guidellm-sync-001",
+  "benchmark_id": "baseline_latency",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "qwen-1.5b"
+  },
+  "benchmark_config": {
+    "profile": "synchronous",
+    "max_requests": 100,
+    "data": "prompt_tokens=256,output_tokens=128"
+  },
+  "experiment_name": "qwen-baseline",
+  "tags": {
+    "test_type": "baseline",
+    "load": "single_user"
+  },
+  "timeout_seconds": 300
+}
+```
+
+**Duration**: Variable (depends on model speed)
+**Use case**: Baseline measurement, minimum latency testing
+
+---
+
+## Local Testing with Ollama
+
+Configuration for local testing with Ollama:
+
+<Tabs>
+<TabItem label="Start Ollama">
+
+```bash
+# Install Ollama (if not already installed)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull and run a model
+ollama run qwen2.5:1.5b
+```
+
+</TabItem>
+
+<TabItem label="Job Specification">
+
+```json
+{
+  "job_id": "local-test-001",
+  "benchmark_id": "ollama_test",
+  "model": {
+    "url": "http://localhost:11434/v1",
+    "name": "qwen2.5:1.5b"
+  },
+  "benchmark_config": {
+    "profile": "constant",
+    "rate": 5,
+    "max_seconds": 10,
+    "max_requests": 20,
+    "data": "prompt_tokens=50,output_tokens=20",
+    "warmup": "0"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem label="Run Benchmark">
+
+```bash
+# Set environment
+export EVALHUB_MODE=local
+export EVALHUB_JOB_SPEC_PATH=meta/job.json
+export SERVICE_URL=http://localhost:8080
+
+# Run adapter
+python main.py
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Error Handling
+
+Configuration with error thresholds:
+
+```json
+{
+  "job_id": "guidellm-resilience-001",
+  "benchmark_id": "error_tolerance",
+  "model": {
+    "url": "http://localhost:8000/v1",
+    "name": "test-model"
+  },
+  "benchmark_config": {
+    "profile": "constant",
+    "rate": 10,
+    "max_seconds": 60,
+    "max_errors": 10,
+    "max_error_rate": 0.05,
+    "data": "prompt_tokens=256,output_tokens=128"
+  },
+  "experiment_name": "error-tolerance-test",
+  "tags": {
+    "test_type": "resilience"
+  },
+  "timeout_seconds": 120
+}
+```
+
+**Stops when**:
+- 10 total errors occur, OR
+- Error rate exceeds 5%
+
+---
+
+## Tips for Writing Configurations
+
+### Choose the Right Profile
+
+- **First test**: Use `sweep` to discover safe rates
+- **Repeatable tests**: Use `constant` for consistent results
+- **Stress tests**: Use `throughput` to find limits
+- **Production simulation**: Use `poisson` for realistic traffic
+
+### Set Appropriate Limits
+
+- Always specify at least one: `max_seconds`, `max_requests`
+- Use `max_error_rate` to fail fast on issues
+- Add `warmup` to exclude cold-start effects
+
+### Data Sources
+
+- **Quick tests**: Use synthetic data (`prompt_tokens=N,output_tokens=M`)
+- **Realistic tests**: Use HuggingFace datasets (`hf:dataset_name`)
+- **Specific scenarios**: Use local files (`file:///path/to/data`)
+
+### Warmup Best Practices
+
+```json
+{
+  "warmup": "5%",    // For percentage-based
+  "warmup": 10       // For time-based (seconds)
+}
+```
+
+Recommended: `"5%"` for most tests
+
+### Tags for Organisation
+
+Use tags to categorise benchmarks:
+
+```json
+{
+  "tags": {
+    "environment": "production|staging|dev",
+    "test_type": "baseline|stress|discovery",
+    "model_size": "small|medium|large",
+    "purpose": "capacity_planning|sla_validation|regression"
+  }
+}
+```
