@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - starlight
   workflow_dispatch:
 
 permissions:
