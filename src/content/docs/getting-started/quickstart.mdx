@@ -198,11 +198,3 @@ When the evaluation completes, the adapter pushes an OCI Artifact to the specifi
 **Job stuck in pending**: Check server logs with `kubectl logs deployment/evalhub-server` or run locally with debug logging.
 
 **Model server not responding**: Verify the model endpoint is reachable from the adapter pod (`curl http://model-server:8000/v1/models`).
-
-## Next Steps
-
-- [Installation](installation/) - Full installation guide
-- [Model authentication](model-authentication/) - API key, CA cert, and ServiceAccount token for model endpoints
-- [Using custom data](custom-data/) - Using custom benchmark test data
-- [Architecture](/development/architecture/) - Adapter architecture
-- [Python SDK](/reference/sdk-client/) - Complete SDK reference

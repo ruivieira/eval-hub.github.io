@@ -169,8 +169,3 @@ adapters/<name>/
 └── meta/
     └── job.json      # Example job spec for local testing
 ```
-
-## Next Steps
-
-- [Python SDK Reference](/reference/sdk-client/) - Complete client and adapter API
-- [OpenShift Setup](openshift-setup/) - Production deployment

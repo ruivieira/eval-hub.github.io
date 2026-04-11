@@ -80,9 +80,3 @@ The adapter supports all LightEval tasks, organised by category:
 
 ### Language Understanding
 - GLUE benchmarks
-
-## What's Next?
-
-- [Configuration](configuration/) - Detailed configuration reference
-- [Benchmarks](benchmarks/) - Complete benchmark list
-- [Examples](examples/) - Usage examples

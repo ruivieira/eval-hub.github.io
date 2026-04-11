@@ -425,9 +425,3 @@ ANSI colour codes are stripped automatically when stdout is not a TTY, so piped 
 | `evalhub config use <profile>` | Switch profile |
 
 Every command supports `--help` for full flag details.
-
-## Next steps
-
-- [Python SDK](/reference/sdk-client/) — programmatic access with the same capabilities
-- [Model authentication](model-authentication/) — API keys, CA certs, and ServiceAccount tokens
-- [Installation](installation/) — server deployment on OpenShift

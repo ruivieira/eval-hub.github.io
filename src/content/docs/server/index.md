@@ -94,9 +94,3 @@ Spawns subprocesses (up to 5 workers) for each benchmark. Enabled with the `-loc
 ## Deployment
 
 The server is deployed by the [TrustyAI Operator](https://github.com/trustyai-explainability/trustyai-service-operator) via the `EvalHub` custom resource. See [OpenShift Setup](/development/openshift-setup/) for production deployment.
-
-## Next Steps
-
-- [Python SDK](/reference/sdk-client/) - Client reference
-- [Architecture](/development/architecture/) - Adapter architecture
-- [OpenShift Setup](/development/openshift-setup/) - Production deployment

@@ -26,14 +26,13 @@ providers = client.providers.list()
 ## Server Deployment
 
 <Tabs>
-<TabItem label="Kubernetes/OpenShift">
+<TabItem label="Kubernetes/OpenShift (SQLite)">
 
-Install using the TrustyAI Operator:
+Install the TrustyAI Operator and deploy EvalHub with SQLite. No external database needed — suitable for development and testing. Data is lost when the pod restarts.
 
 ```bash
 kubectl apply -f https://github.com/trustyai-explainability/trustyai-service-operator/releases/latest/download/trustyai-operator.yaml
 
-# SQLite (development/testing): no external database needed.
 kubectl apply -f - <<EOF
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: EvalHub
@@ -56,8 +55,17 @@ spec:
     - safety-and-fairness-v1
     - toxicity-and-ethical-principles
 EOF
+```
 
-# PostgreSQL (production): create the credentials secret first, then the CR.
+</TabItem>
+
+<TabItem label="Kubernetes/OpenShift (PostgreSQL)">
+
+Install the TrustyAI Operator and deploy EvalHub with PostgreSQL for durable, persistent storage. Create the credentials Secret first, then the CR.
+
+```bash
+kubectl apply -f https://github.com/trustyai-explainability/trustyai-service-operator/releases/latest/download/trustyai-operator.yaml
+
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -68,6 +76,7 @@ type: Opaque
 stringData:
   db-url: "postgres://user:password@db-host:5432/evalhub"
 EOF
+
 kubectl apply -f - <<EOF
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: EvalHub
@@ -93,7 +102,7 @@ spec:
 EOF
 ```
 
-See [OpenShift Setup](../development/openshift-setup.md#evalhub-custom-resource-spec) for a full description of all `spec` fields.
+See [OpenShift Setup](/development/openshift-setup/) for a full description of all `spec` fields.
 
 </TabItem>
 
@@ -199,8 +208,3 @@ ollama run qwen2.5:1.5b
 curl http://localhost:8080/api/v1/health
 curl http://localhost:8080/api/v1/evaluations/providers
 ```
-
-## Next Steps
-
-- [Quick Start](quickstart/) - Run your first evaluation
-- [OpenShift Setup](/development/openshift-setup/) - Production deployment guide
