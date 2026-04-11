@@ -6,7 +6,7 @@ This guide provides reference details for the MCP server to interact with EvalHu
 
 ## Prerequisites
 
-The following installation steps assumes you want to use a dedicated "agent" ServiceAccount when using [EvalHub multi-tenant](/development/multi-tenancy/) deployed on an OpenShift cluster.
+The following installation steps assumes you want to use a dedicated "agent" ServiceAccount when using [EvalHub multi-tenant](/architecture/multi-tenancy/) deployed on an OpenShift cluster.
 
 Create a `team-a-agent` ServiceAccount:
 
@@ -55,7 +55,7 @@ EOF
 
 ## Installation of MCP in the AI Agent
 
-Set "agent" ServiceAccount values in a dedicated profile for the [EvalHub CLI](/getting-started/cli/):
+Set "agent" ServiceAccount values in a dedicated profile for the [EvalHub CLI](/guides/cli/):
 
 ```sh
 evalhub --profile agent config set base_url https://evalhub-opendatahub.apps.(...).openshiftapps.com

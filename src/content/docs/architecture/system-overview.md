@@ -1,5 +1,5 @@
 ---
-title: "Architecture"
+title: "System Overview"
 ---
 
 Technical architecture of EvalHub adapters.

@@ -4,7 +4,7 @@ title: "CLI"
 
 The `evalhub` command-line tool lets you submit evaluation jobs, check status, retrieve results, and manage collections and configuration — all from a terminal or shell script.
 
-EvalHub is assumed to be running on your OpenShift cluster. If it is not, see [Installation](installation/) first.
+EvalHub is assumed to be running on your OpenShift cluster. If it is not, see [Installation](/getting-started/installation/) first.
 
 ## Install the CLI
 

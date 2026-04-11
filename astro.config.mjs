@@ -24,33 +24,29 @@ export default defineConfig({
         {
           label: 'Getting Started',
           items: [
-            { label: 'Overview', slug: 'getting-started/overview' },
             { label: 'Installation', slug: 'getting-started/installation' },
             { label: 'Quick Start', slug: 'getting-started/quickstart' },
-            { label: 'CLI', slug: 'getting-started/cli' },
-            { label: 'Model Authentication', slug: 'getting-started/model-authentication' },
-            { label: 'Using Custom Data', slug: 'getting-started/custom-data' },
           ],
         },
         {
-          label: 'Server',
+          label: 'Guides',
           items: [
-            { label: 'Overview', slug: 'server' },
+            { label: 'CLI', slug: 'guides/cli' },
+            { label: 'Model Authentication', slug: 'guides/model-authentication' },
+            { label: 'Using Custom Data', slug: 'guides/custom-data' },
           ],
         },
         {
-          label: 'Development',
+          label: 'Architecture',
           items: [
-            { label: 'Architecture', slug: 'development/architecture' },
-            { label: 'OpenShift Setup', slug: 'development/openshift-setup' },
-            { label: 'Multi-Tenancy', slug: 'development/multi-tenancy' },
+            { label: 'System Overview', slug: 'architecture/system-overview' },
+            { label: 'Multi-Tenancy', slug: 'architecture/multi-tenancy' },
           ],
         },
         {
-          label: 'Reference',
+          label: 'Deployment',
           items: [
-            { label: 'Python SDK', slug: 'reference/sdk-client' },
-            { label: 'MCP', slug: 'reference/mcp' },
+            { label: 'OpenShift Setup', slug: 'deployment/openshift-setup' },
           ],
         },
         {
@@ -78,9 +74,12 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Build Details',
+          label: 'Reference',
           items: [
-            { label: 'CVE Fixer', slug: 'build-details/cve-fixer' },
+            { label: 'Server API', slug: 'reference/server-api' },
+            { label: 'Python SDK', slug: 'reference/sdk-client' },
+            { label: 'MCP', slug: 'reference/mcp' },
+            { label: 'CVE Fixer', slug: 'reference/cve-fixer' },
           ],
         },
       ],

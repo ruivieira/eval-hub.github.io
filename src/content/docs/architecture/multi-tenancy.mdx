@@ -50,7 +50,7 @@ The tenant is always determined by the `X-Tenant` request header — **not** by 
 
 Before setting up multi-tenancy, ensure you have:
 
-- A working EvalHub deployment (see [OpenShift Setup](openshift-setup/))
+- A working EvalHub deployment (see [OpenShift Setup](/deployment/openshift-setup/))
 - Cluster-admin access (for creating namespaces and ClusterRoleBindings)
 - The TrustyAI Operator installed and reconciling
 
@@ -359,7 +359,7 @@ The TokenReview resolves this to `alice`, and the SAR check matches the `kind: G
 </TabItem>
 </Tabs>
 
-**List providers (scoped to team-a)** (or alternatively, use the [CLI](/getting-started/cli/))**:**
+**List providers (scoped to team-a)** (or alternatively, use the [CLI](/guides/cli/))**:**
 
 ```bash
 curl -sS -k \
