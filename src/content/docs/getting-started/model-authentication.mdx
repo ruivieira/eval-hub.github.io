@@ -2,6 +2,8 @@
 title: "Model Authentication"
 ---
 
+import { Steps } from '@astrojs/starlight/components';
+
 If a model endpoint requires authentication or custom TLS verification, EvalHub can provide the necessary credentials to the evaluation job so the adapter can securely call the model endpoint.
 
 ### Model Secured with an API Key (and Optional Custom TLS)
@@ -65,70 +67,76 @@ kubectl create secret generic vllm-api-key -n team-a \
   --from-file=ca_cert=/path/to/ca.pem
 ```
 
-### Step 1: Reference the secret in the job
+### Set up
 
-Set `model.auth.secret_ref` to the secret name when submitting the evaluation job.
+<Steps>
 
-**Example request:**
+1. **Reference the secret in the job**
 
-```bash
-curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
-  -H "Authorization: Bearer $token" \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant: team-a" \
-  -d '{
-  "name": "model api key/cert test",
-  "model": {
-    "url": "https://vllm-route-prabhu.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
-    "name": "gpt2",
-    "auth": {
-      "secret_ref": "vllm-api-key"
-    }
-  },
-  "benchmarks": [
-    {
-      "id": "arc_easy",
-      "provider_id": "lm_evaluation_harness",
-      "parameters": {
-        "limit": 5,
-        "num_examples": 10,
-        "tokenizer": "google/flan-t5-small"
-      }
-    }
-  ]
-}'
-```
+   Set `model.auth.secret_ref` to the secret name when submitting the evaluation job.
 
-**Example using the Python SDK**
+   **Example request:**
 
-The following example submits the same evaluation job using the EvalHub Python SDK.
+   ```bash
+   curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
+     -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -H "X-Tenant: team-a" \
+     -d '{
+     "name": "model api key/cert test",
+     "model": {
+       "url": "https://vllm-route-prabhu.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
+       "name": "gpt2",
+       "auth": {
+         "secret_ref": "vllm-api-key"
+       }
+     },
+     "benchmarks": [
+       {
+         "id": "arc_easy",
+         "provider_id": "lm_evaluation_harness",
+         "parameters": {
+           "limit": 5,
+           "num_examples": 10,
+           "tokenizer": "google/flan-t5-small"
+         }
+       }
+     ]
+   }'
+   ```
 
-```python
-import os
-from evalhub import SyncEvalHubClient
-from evalhub.models.api import ModelConfig, BenchmarkConfig, JobSubmissionRequest
+   **Example using the Python SDK**
 
-client = SyncEvalHubClient(base_url=os.environ.get("HOST", "http://localhost:8080"))
+   The following example submits the same evaluation job using the EvalHub Python SDK.
 
-job = client.jobs.submit(
-    JobSubmissionRequest(
-        name="model api key/cert test",
-        model=ModelConfig(
-            url="https://vllm-route-prabhu.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
-            name="gpt2",
-            auth={"secret_ref": "vllm-api-key"},
-        ),
-        benchmarks=[
-            BenchmarkConfig(
-                id="arc_easy",
-                provider_id="lm_evaluation_harness",
-                parameters={"limit": 5, "num_examples": 10, "tokenizer": "google/flan-t5-small"},
-            )
-        ],
-    ),
-    headers={"X-Tenant": "team-a"},
-)
-```
+   ```python
+   import os
+   from evalhub import SyncEvalHubClient
+   from evalhub.models.api import ModelConfig, BenchmarkConfig, JobSubmissionRequest
+
+   client = SyncEvalHubClient(base_url=os.environ.get("HOST", "http://localhost:8080"))
+
+   job = client.jobs.submit(
+       JobSubmissionRequest(
+           name="model api key/cert test",
+           model=ModelConfig(
+               url="https://vllm-route-prabhu.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
+               name="gpt2",
+               auth={"secret_ref": "vllm-api-key"},
+           ),
+           benchmarks=[
+               BenchmarkConfig(
+                   id="arc_easy",
+                   provider_id="lm_evaluation_harness",
+                   parameters={"limit": 5, "num_examples": 10, "tokenizer": "google/flan-t5-small"},
+               )
+           ],
+       ),
+       headers={"X-Tenant": "team-a"},
+   )
+   ```
+
+</Steps>
 
 ### Troubleshooting
 
@@ -155,79 +163,85 @@ Use this scenario when the model endpoint is protected by Kubernetes RBAC.
 
 The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends the pod's ServiceAccount token when calling the model. The model's proxy verifies that this ServiceAccount has permission to access the model.
 
-### Step 1: Grant the ServiceAccount access
+### Set up
 
-The model namespace typically already has a Role (e.g. `gpt2-view-role`) from model deployment. Create a **RoleBinding** that binds the EvalHub job ServiceAccount to that role. The job runs as an SA in the tenant namespace (e.g. `evalhub-prabhu-job` in `team-a`).
+<Steps>
 
-**Using oc:**
+1. **Grant the ServiceAccount access**
 
-```bash
-oc create rolebinding gpt2-view-evalhub-prabhu-job \
-  --role=gpt2-view-role \
-  --serviceaccount=team-a:evalhub-prabhu-job \
-  -n team-a
-```
+   The model namespace typically already has a Role (e.g. `gpt2-view-role`) from model deployment. Create a **RoleBinding** that binds the EvalHub job ServiceAccount to that role. The job runs as an SA in the tenant namespace (e.g. `evalhub-prabhu-job` in `team-a`).
 
-**Or apply a RoleBinding YAML:**
+   **Using oc:**
 
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gpt2-view-evalhub-prabhu-job
-  namespace: team-a
-subjects:
-  - kind: ServiceAccount
-    name: evalhub-prabhu-job
-    namespace: team-a
-roleRef:
-  kind: Role
-  name: gpt2-view-role
-  apiGroup: rbac.authorization.k8s.io
-```
+   ```bash
+   oc create rolebinding gpt2-view-evalhub-prabhu-job \
+     --role=gpt2-view-role \
+     --serviceaccount=team-a:evalhub-prabhu-job \
+     -n team-a
+   ```
 
-Apply and verify access:
+   **Or apply a RoleBinding YAML:**
 
-```bash
-kubectl apply -f role-binding.yaml
+   ```yaml
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: RoleBinding
+   metadata:
+     name: gpt2-view-evalhub-prabhu-job
+     namespace: team-a
+   subjects:
+     - kind: ServiceAccount
+       name: evalhub-prabhu-job
+       namespace: team-a
+   roleRef:
+     kind: Role
+     name: gpt2-view-role
+     apiGroup: rbac.authorization.k8s.io
+   ```
 
-kubectl auth can-i get inferenceservices.serving.kserve.io/gpt2 \
-  -n team-a \
-  --as=system:serviceaccount:team-a:evalhub-prabhu-job
-```
+   Apply and verify access:
 
-The command should return: `yes`
+   ```bash
+   kubectl apply -f role-binding.yaml
 
-### Step 2: Submit the job
+   kubectl auth can-i get inferenceservices.serving.kserve.io/gpt2 \
+     -n team-a \
+     --as=system:serviceaccount:team-a:evalhub-prabhu-job
+   ```
 
-When using ServiceAccount authentication, do not set `model.auth` unless the endpoint uses a custom CA certificate—in that case, create a secret containing only `ca_cert` and reference it using `model.auth.secret_ref`.
+   The command should return: `yes`
 
-**Example:**
+2. **Submit the job**
 
-```bash
-curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
-  -H "Authorization: Bearer $token" \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant: team-a" \
-  -d '{
-  "name": "model api key/cert test",
-  "model": {
-    "url": "https://gpt2-team-a.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
-    "name": "gpt2"
-  },
-  "benchmarks": [
-    {
-      "id": "arc_easy",
-      "provider_id": "lm_evaluation_harness",
-      "parameters": {
-        "limit": 5,
-        "num_examples": 10,
-        "tokenizer": "google/flan-t5-small"
-      }
-    }
-  ]
-}'
-```
+   When using ServiceAccount authentication, do not set `model.auth` unless the endpoint uses a custom CA certificate—in that case, create a secret containing only `ca_cert` and reference it using `model.auth.secret_ref`.
+
+   **Example:**
+
+   ```bash
+   curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
+     -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -H "X-Tenant: team-a" \
+     -d '{
+     "name": "model api key/cert test",
+     "model": {
+       "url": "https://gpt2-team-a.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
+       "name": "gpt2"
+     },
+     "benchmarks": [
+       {
+         "id": "arc_easy",
+         "provider_id": "lm_evaluation_harness",
+         "parameters": {
+           "limit": 5,
+           "num_examples": 10,
+           "tokenizer": "google/flan-t5-small"
+         }
+       }
+     ]
+   }'
+   ```
+
+</Steps>
 
 ---
 
