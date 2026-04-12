@@ -1,24 +1,22 @@
-# Adapter execution sequence (development/architecture)
-exec: "2. Execution" {
+# Adapter execution sequence
+exec: Execution {
   shape: sequence_diagram
   a: Adapter
   f: Framework
   c: Callbacks
   s: Sidecar
-  r: "OCI Registry"
+  r: OCI Registry
   m: MLflow
 
-  a -> c: "report_status(RUNNING, INITIALIZING)"
-  c -> s: "POST /api/v1/evaluations/jobs/{id}/events"
-  a -> f: "Run Benchmark"
-  a -> c: "report_status(RUNNING, RUNNING_EVALUATION)"
-  c -> s: "POST /api/v1/evaluations/jobs/{id}/events"
-  f -> a: "Raw Results"
-  a -> a: "Parse Results → JobResults"
-  a -> c: "create_oci_artifact(OCIArtifactSpec)"
-  c -> r: "Push OCI Artifact (oras)"
-  r -> c: "OCIArtifactResult (digest)"
-  a -> c: "report_results(JobResults)"
-  c -> s: "POST /api/v1/evaluations/jobs/{id}/events"
-  c -> m: "report_metrics_to_mlflow(results)"
+  a -> c: report_status(RUNNING)
+  c -> s: POST /events
+  a -> f: Run Benchmark
+  f -> a: Raw Results
+  a -> a: Parse Results
+  a -> c: create_oci_artifact()
+  c -> r: Push OCI Artifact
+  r -> c: digest
+  a -> c: report_results()
+  c -> s: POST /events
+  c -> m: log metrics
 }
