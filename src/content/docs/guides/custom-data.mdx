@@ -2,7 +2,7 @@
 title: "Using Custom Data"
 ---
 
-import { Steps } from '@astrojs/starlight/components';
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Some benchmarks require external test datasets. EvalHub can load this data from **S3-compatible** storage (AWS S3, MinIO, or any S3 API-compatible service) before the evaluation job runs. Data is downloaded by an init container and mounted at `/test_data` for the adapter.
 
@@ -157,8 +157,58 @@ The init container expects credentials from a **Kubernetes Secret** mounted at `
 
    Attach the test data reference to the benchmark via `test_data_ref.s3`: `bucket`, `key` (prefix), and `secret_ref` (Secret name).
 
+   <Tabs>
+   <TabItem label="CLI">
+
+   ```bash {7-9}
+   evalhub eval run \
+     --name s3-data-eval \
+     --model-url http://your-model:8000/v1 \
+     --model-name my-model \
+     --provider your_provider_id \
+     --benchmark your_benchmark_id \
+     --test-data-s3-bucket evalhub-test \
+     --test-data-s3-key dataset/ \
+     --test-data-s3-secret evalhub-s3-credentials
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
+
+   ```python {16-22}
+   import os
+   from evalhub import SyncEvalHubClient
+   from evalhub.models.api import (
+       ModelConfig, BenchmarkConfig, JobSubmissionRequest, TestDataRef, S3TestDataRef
+   )
+
+   client = SyncEvalHubClient(base_url=os.environ["EVALHUB_URL"])
+
+   job = client.jobs.submit(JobSubmissionRequest(
+       name="s3-data-eval",
+       model=ModelConfig(url="http://your-model:8000/v1", name="my-model"),
+       benchmarks=[
+           BenchmarkConfig(
+               id="your_benchmark_id",
+               provider_id="your_provider_id",
+               test_data_ref=TestDataRef(
+                   s3=S3TestDataRef(
+                       bucket="evalhub-test",
+                       key="dataset/",
+                       secret_ref="evalhub-s3-credentials",
+                   )
+               ),
+           )
+       ],
+   ))
+   print(f"Job submitted: {job.id}")
+   ```
+
+   </TabItem>
+   <TabItem label="REST API">
+
    ```bash {12-18}
-   curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+   curl -s -X POST $EVALHUB_URL/api/v1/evaluations/jobs \
      -H "Content-Type: application/json" \
      -d '{
        "model": {
@@ -181,33 +231,8 @@ The init container expects credentials from a **Kubernetes Secret** mounted at `
      }'
    ```
 
-   From Python you can send the same payload with `requests` or any HTTP client until the SDK adds first-class support for `test_data_ref`:
-
-   ```python
-   import requests
-
-   response = requests.post(
-       "http://localhost:8080/api/v1/evaluations/jobs",
-       json={
-           "model": {"url": "http://your-model:8000/v1", "name": "my-model"},
-           "benchmarks": [
-               {
-                   "id": "your_benchmark_id",
-                   "provider_id": "your_provider_id",
-                   "test_data_ref": {
-                       "s3": {
-                           "bucket": "evalhub-test",
-                           "key": "dataset/",
-                           "secret_ref": "evalhub-s3-credentials",
-                       }
-                   },
-               }
-           ],
-       },
-   )
-   job = response.json()
-   print(f"Job submitted: {job['resource']['id']}")
-   ```
+   </TabItem>
+   </Tabs>
 
    - **bucket**: MinIO bucket name (e.g. `evalhub-test`).
    - **key**: Object key prefix; all objects under this prefix are downloaded (e.g. `dataset/` or `dataset`).
