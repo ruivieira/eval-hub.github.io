@@ -367,7 +367,29 @@ Before setting up multi-tenancy, ensure you have:
    </TabItem>
    </Tabs>
 
-   **List providers (scoped to team-a)** (or alternatively, use the [CLI](/guides/cli/))**:**
+   **List providers (scoped to team-a):**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   evalhub providers list --token $TOKEN --tenant team-a
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
+
+   ```python
+   team_a = SyncEvalHubClient(
+       base_url=os.environ["EVALHUB_URL"],
+       auth_token=TOKEN,
+       tenant="team-a"
+   )
+   providers = team_a.providers.list()
+   ```
+
+   </TabItem>
+   <TabItem label="REST API">
 
    ```bash
    curl -sS -k \
@@ -376,7 +398,43 @@ Before setting up multi-tenancy, ensure you have:
      "https://$EVALHUB_URL/api/v1/evaluations/providers" | jq .
    ```
 
+   </TabItem>
+   </Tabs>
+
    **Submit an evaluation job:**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   evalhub eval run \
+     --token $TOKEN \
+     --tenant team-a \
+     --name mmlu-eval \
+     --model-url http://vllm-server.team-a.svc.cluster.local:8000/v1 \
+     --model-name meta-llama/Llama-3.2-1B-Instruct \
+     --provider lm_evaluation_harness \
+     --benchmark mmlu
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
+
+   ```python
+   job = team_a.jobs.submit(JobSubmissionRequest(
+       name="mmlu-eval",
+       model=ModelConfig(
+           url="http://vllm-server.team-a.svc.cluster.local:8000/v1",
+           name="meta-llama/Llama-3.2-1B-Instruct"
+       ),
+       benchmarks=[
+           BenchmarkConfig(id="mmlu", provider_id="lm_evaluation_harness")
+       ]
+   ))
+   ```
+
+   </TabItem>
+   <TabItem label="REST API">
 
    ```bash
    curl -sS -k -X POST \
@@ -398,9 +456,36 @@ Before setting up multi-tenancy, ensure you have:
      "https://$EVALHUB_URL/api/v1/evaluations/jobs" | jq .
    ```
 
+   </TabItem>
+   </Tabs>
+
    The job pod will be created in the `team-a` namespace using the `evalhub-opendatahub-job` ServiceAccount, regardless of which principal type submitted the request.
 
    **Cross-tenant access is denied:**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   # This will return an error — no access to team-b
+   evalhub eval status --token $TOKEN --tenant team-b
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
+
+   ```python
+   # This will raise an HTTP 403 error
+   team_b = SyncEvalHubClient(
+       base_url=os.environ["EVALHUB_URL"],
+       auth_token=TOKEN,
+       tenant="team-b"
+   )
+   team_b.jobs.list()  # 403 Forbidden
+   ```
+
+   </TabItem>
+   <TabItem label="REST API">
 
    ```bash
    # This will return 403 Forbidden
@@ -409,6 +494,9 @@ Before setting up multi-tenancy, ensure you have:
      -H "X-Tenant: team-b" \
      "https://$EVALHUB_URL/api/v1/evaluations/jobs"
    ```
+
+   </TabItem>
+   </Tabs>
 
    The SAR check fails because the principal (whether a ServiceAccount or a User) has no RoleBinding in the `team-b` namespace.
 

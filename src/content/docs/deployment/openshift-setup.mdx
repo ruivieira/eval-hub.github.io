@@ -314,29 +314,20 @@ Develop and test custom EvalHub providers on OpenShift.
 
    The operator repository has the following structure under `config/`:
 
-   ```bash
+   ```
    config/
-   ├── crd/
-   │   └── bases/
-   │       ├── trustyai.opendatahub.io_evalhubs.yaml
-   │       ├── trustyai.opendatahub.io_lmevaljobrequests.yaml
-   │       └── trustyai.opendatahub.io_trustyaiservices.yaml
+   ├── crd/bases/
+   │   ├── trustyai.opendatahub.io_evalhubs.yaml
+   │   ├── trustyai.opendatahub.io_lmevaljobrequests.yaml
+   │   └── trustyai.opendatahub.io_trustyaiservices.yaml
    ├── default/
-   │   ├── kustomization.yaml
-   │   └── manager_auth_proxy_patch.yaml
    ├── manager/
-   │   ├── kustomization.yaml
-   │   └── manager.yaml
    ├── manifests/
-   │   └── ...
-   ├── overlays/
-   │   └── odh/
-   │       ├── kustomization.yaml
-   │       └── params.env
+   ├── overlays/odh/
+   │   ├── kustomization.yaml
+   │   └── params.env          ← image references
    ├── rbac/
-   │   └── ...
    └── samples/
-       └── ...
    ```
 
    To customize, edit the configuration files:
