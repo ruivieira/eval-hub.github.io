@@ -71,7 +71,7 @@ Run your first evaluation with EvalHub.
    ```
 
    </TabItem>
-   <TabItem label="curl">
+   <TabItem label="REST API">
 
    No installation needed — use `curl` directly against the REST API.
 
@@ -97,10 +97,11 @@ Run your first evaluation with EvalHub.
    <TabItem label="Python SDK">
 
    ```python
+   import os
    from evalhub import SyncEvalHubClient
    from evalhub.models.api import ModelConfig, BenchmarkConfig, JobSubmissionRequest
 
-   client = SyncEvalHubClient(base_url="http://localhost:8080")
+   client = SyncEvalHubClient(base_url=os.environ["EVALHUB_URL"])
 
    job = client.jobs.submit(JobSubmissionRequest(
        name="quickstart-eval",
@@ -126,10 +127,10 @@ Run your first evaluation with EvalHub.
    ```
 
    </TabItem>
-   <TabItem label="curl">
+   <TabItem label="REST API">
 
    ```bash
-   curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+   curl -s -X POST $EVALHUB_URL/api/v1/evaluations/jobs \
      -H "Content-Type: application/json" \
      -d '{
        "name": "quickstart-eval",
@@ -188,14 +189,14 @@ Run your first evaluation with EvalHub.
    ```
 
    </TabItem>
-   <TabItem label="curl">
+   <TabItem label="REST API">
 
    ```bash
    # Check job status
-   curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 | jq .
+   curl -s $EVALHUB_URL/api/v1/evaluations/jobs/eval-a1b2c3d4 | jq .
 
    # Get results once completed
-   curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 \
+   curl -s $EVALHUB_URL/api/v1/evaluations/jobs/eval-a1b2c3d4 \
      | jq '.results'
    ```
 
@@ -229,14 +230,14 @@ for b in benchmarks:
 ```
 
 </TabItem>
-<TabItem label="curl">
+<TabItem label="REST API">
 
 ```bash
 # List all providers
-curl -s http://localhost:8080/api/v1/evaluations/providers | jq .
+curl -s $EVALHUB_URL/api/v1/evaluations/providers | jq .
 
 # Get a specific provider with its benchmarks
-curl -s http://localhost:8080/api/v1/evaluations/providers/lm_evaluation_harness | jq .
+curl -s $EVALHUB_URL/api/v1/evaluations/providers/lm_evaluation_harness | jq .
 ```
 
 </TabItem>
@@ -269,10 +270,10 @@ job = client.jobs.submit(JobSubmissionRequest(
 ```
 
 </TabItem>
-<TabItem label="curl">
+<TabItem label="REST API">
 
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+curl -s -X POST $EVALHUB_URL/api/v1/evaluations/jobs \
   -H "Content-Type: application/json" \
   -d '{
     "name": "llama3-healthcare-eval",
@@ -319,10 +320,10 @@ job = client.jobs.submit(JobSubmissionRequest(
 ```
 
 </TabItem>
-<TabItem label="curl">
+<TabItem label="REST API">
 
 ```bash {15-17}
-curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+curl -s -X POST $EVALHUB_URL/api/v1/evaluations/jobs \
   -H "Content-Type: application/json" \
   -d '{
     "name": "llama3-mlflow-eval",
@@ -370,10 +371,10 @@ for r in result.results:
 ```
 
 </TabItem>
-<TabItem label="curl">
+<TabItem label="REST API">
 
 ```bash
-curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 \
+curl -s $EVALHUB_URL/api/v1/evaluations/jobs/eval-a1b2c3d4 \
   | jq '.results'
 ```
 
@@ -441,10 +442,10 @@ job = client.jobs.submit(JobSubmissionRequest(
 ```
 
 </TabItem>
-<TabItem label="curl">
+<TabItem label="REST API">
 
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+curl -s -X POST $EVALHUB_URL/api/v1/evaluations/jobs \
   -H "Content-Type: application/json" \
   -d '{
     "name": "my-eval-job1",

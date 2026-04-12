@@ -4,26 +4,45 @@ title: "Installation"
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
+Install the EvalHub server and a client to interact with it.
+
 ## Prerequisites
 
 - **Python 3.11+**
 - **Kubernetes/OpenShift cluster** (for production deployment)
+- **kubectl** or **oc** CLI configured for your cluster
 
-## Client SDK
+## Install a Client
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
 
 ```bash
-pip install eval-hub-sdk[client]
+pip install "eval-hub-sdk[cli]"
 ```
 
-```python
-from evalhub import SyncEvalHubClient
-from evalhub.models.api import ModelConfig, BenchmarkConfig, JobSubmissionRequest
+Verify:
 
-client = SyncEvalHubClient(base_url="http://localhost:8080")
-providers = client.providers.list()
+```bash
+evalhub version
 ```
 
-## Server Deployment
+</TabItem>
+<TabItem label="Python SDK">
+
+```bash
+pip install "eval-hub-sdk[client]"
+```
+
+</TabItem>
+<TabItem label="REST API">
+
+No installation needed — use `curl` or any HTTP client directly against the REST API.
+
+</TabItem>
+</Tabs>
+
+## Deploy the Server
 
 <Tabs>
 <TabItem label="Kubernetes/OpenShift (SQLite)">
@@ -122,89 +141,35 @@ The server starts at `http://localhost:8080` with SQLite in-memory storage.
 </TabItem>
 </Tabs>
 
-## Provider Configuration
+## Verify the Installation
 
-Providers are defined in YAML files under `config/providers/`. Each provider specifies a container image, resource requirements, and available benchmarks.
-
-```yaml
-id: guidellm
-name: GuideLLM
-description: Performance benchmarking framework
-type: builtin
-runtime:
-  k8s:
-    image: quay.io/eval-hub/community-guidellm:latest
-    entrypoint: [python, main.py]
-    cpu_request: 100m
-    memory_request: 128Mi
-    cpu_limit: 500m
-    memory_limit: 1Gi
-benchmarks:
-  - id: sweep
-    name: Rate Sweep
-    category: performance
-    metrics: [requests_per_second, mean_ttft_ms, mean_itl_ms]
-```
-
-Custom providers can also be created via the REST API:
+<Tabs syncKey="interface">
+<TabItem label="CLI">
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/evaluations/providers \
-  -H "Content-Type: application/json" \
-  -d @my-provider.json
-```
-
-## Model Serving
-
-For evaluations, you need a model endpoint compatible with the OpenAI API.
-
-<Tabs>
-<TabItem label="vLLM (Kubernetes)">
-
-```bash
-kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-server
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: vllm
-  template:
-    metadata:
-      labels:
-        app: vllm
-    spec:
-      containers:
-      - name: vllm
-        image: vllm/vllm-openai:latest
-        args: [--model, meta-llama/Llama-3.2-1B-Instruct, --port, "8000"]
-        ports:
-        - containerPort: 8000
-        resources:
-          limits:
-            nvidia.com/gpu: 1
-EOF
+evalhub health
+evalhub providers list
 ```
 
 </TabItem>
+<TabItem label="Python SDK">
 
-<TabItem label="Ollama (Local)">
+```python
+import os
+from evalhub import SyncEvalHubClient
+
+client = SyncEvalHubClient(base_url=os.environ["EVALHUB_URL"])
+print(client.health())
+print(client.providers.list())
+```
+
+</TabItem>
+<TabItem label="REST API">
 
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh
-ollama run qwen2.5:1.5b
-# Serves at http://localhost:11434/v1
+curl -s $EVALHUB_URL/api/v1/health
+curl -s $EVALHUB_URL/api/v1/evaluations/providers | jq .
 ```
 
 </TabItem>
 </Tabs>
-
-## Verification
-
-```bash
-curl http://localhost:8080/api/v1/health
-curl http://localhost:8080/api/v1/evaluations/providers
-```
