@@ -4,24 +4,15 @@ title: "Quick Start"
 
 import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-Run your first evaluation with EvalHub using GuideLLM as an example.
+Run your first evaluation with EvalHub.
 
 <Steps>
 
 1. **Start a Model Server**
 
+   You need an OpenAI-compatible model endpoint. Pick one:
+
    <Tabs>
-   <TabItem label="Ollama (Local)">
-
-   ```bash
-   curl -fsSL https://ollama.com/install.sh | sh
-   ollama run qwen2.5:1.5b
-   ```
-
-   Ollama serves at `http://localhost:11434/v1` (OpenAI-compatible).
-
-   </TabItem>
-
    <TabItem label="vLLM (Kubernetes)">
 
    ```bash
@@ -50,15 +41,60 @@ Run your first evaluation with EvalHub using GuideLLM as an example.
    ```
 
    </TabItem>
-   </Tabs>
 
-2. **Install Client SDK**
+   <TabItem label="Ollama (Local)">
 
    ```bash
-   pip install eval-hub-sdk[client]
+   curl -fsSL https://ollama.com/install.sh | sh
+   ollama run qwen2.5:1.5b
    ```
 
-3. **Submit Evaluation**
+   Ollama serves at `http://localhost:11434/v1` (OpenAI-compatible).
+
+   </TabItem>
+   </Tabs>
+
+2. **Install a Client**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   pip install "eval-hub-sdk[cli]"
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
+
+   ```bash
+   pip install "eval-hub-sdk[client]"
+   ```
+
+   </TabItem>
+   <TabItem label="curl">
+
+   No installation needed — use `curl` directly against the REST API.
+
+   </TabItem>
+   </Tabs>
+
+3. **Submit an Evaluation**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   evalhub eval run \
+     --name quickstart-eval \
+     --model-url http://localhost:11434/v1 \
+     --model-name qwen2.5:1.5b \
+     --provider guidellm \
+     --benchmark quick_perf_test
+   # Job submitted: eval-a1b2c3d4
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
 
    ```python
    from evalhub import SyncEvalHubClient
@@ -89,7 +125,54 @@ Run your first evaluation with EvalHub using GuideLLM as an example.
    print(f"Job submitted: {job.id}")
    ```
 
+   </TabItem>
+   <TabItem label="curl">
+
+   ```bash
+   curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "quickstart-eval",
+       "model": {
+         "url": "http://localhost:11434/v1",
+         "name": "qwen2.5:1.5b"
+       },
+       "benchmarks": [
+         {
+           "id": "quick_perf_test",
+           "provider_id": "guidellm",
+           "parameters": {
+             "profile": "constant",
+             "rate": 5,
+             "max_seconds": 10,
+             "max_requests": 20
+           }
+         }
+       ]
+     }'
+   ```
+
+   </TabItem>
+   </Tabs>
+
 4. **Wait for Results**
+
+   <Tabs syncKey="interface">
+   <TabItem label="CLI">
+
+   ```bash
+   # Block until the job completes
+   evalhub eval run --config eval.yaml --wait
+
+   # Or check status separately
+   evalhub eval status eval-a1b2c3d4
+
+   # View results
+   evalhub eval results eval-a1b2c3d4
+   ```
+
+   </TabItem>
+   <TabItem label="Python SDK">
 
    ```python
    result = client.jobs.wait_for_completion(job.id, timeout=120)
@@ -104,11 +187,37 @@ Run your first evaluation with EvalHub using GuideLLM as an example.
    print(f"Status: {status.status}")
    ```
 
+   </TabItem>
+   <TabItem label="curl">
+
+   ```bash
+   # Check job status
+   curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 | jq .
+
+   # Get results once completed
+   curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 \
+     | jq '.results'
+   ```
+
+   </TabItem>
+   </Tabs>
+
 </Steps>
 
 ## Explore Further
 
 ### List Providers and Benchmarks
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+evalhub providers list
+evalhub providers describe lm_evaluation_harness
+```
+
+</TabItem>
+<TabItem label="Python SDK">
 
 ```python
 for provider in client.providers.list():
@@ -119,34 +228,161 @@ for b in benchmarks:
     print(f"  {b.id}: {b.name}")
 ```
 
+</TabItem>
+<TabItem label="curl">
+
+```bash
+# List all providers
+curl -s http://localhost:8080/api/v1/evaluations/providers | jq .
+
+# Get a specific provider with its benchmarks
+curl -s http://localhost:8080/api/v1/evaluations/providers/lm_evaluation_harness | jq .
+```
+
+</TabItem>
+</Tabs>
+
 ### Submit a Collection
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+evalhub collections run healthcare_safety_v1 \
+  --model-url http://localhost:11434/v1 \
+  --model-name qwen2.5:1.5b \
+  --name llama3-healthcare-eval \
+  --wait
+```
+
+</TabItem>
+<TabItem label="Python SDK">
 
 ```python
 from evalhub.models.api import CollectionRef
 
 job = client.jobs.submit(JobSubmissionRequest(
     name="llama3-healthcare-eval",
-    model=ModelConfig(url="...", name="llama-3-8b"),
+    model=ModelConfig(url="http://localhost:11434/v1", name="qwen2.5:1.5b"),
     collection=CollectionRef(id="healthcare_safety_v1")
 ))
 ```
 
+</TabItem>
+<TabItem label="curl">
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "llama3-healthcare-eval",
+    "model": {
+      "url": "http://localhost:11434/v1",
+      "name": "qwen2.5:1.5b"
+    },
+    "collection": {
+      "id": "healthcare_safety_v1"
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
 ### Use MLflow Tracking
 
-```python
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash {7}
+evalhub eval run \
+  --name llama3-mlflow-eval \
+  --model-url http://localhost:11434/v1 \
+  --model-name qwen2.5:1.5b \
+  --provider lm_evaluation_harness \
+  --benchmark mmlu \
+  --experiment my-experiment
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+```python {7}
 from evalhub.models.api import ExperimentConfig
 
 job = client.jobs.submit(JobSubmissionRequest(
     name="llama3-mlflow-eval",
-    model=ModelConfig(url="...", name="llama-3-8b"),
+    model=ModelConfig(url="http://localhost:11434/v1", name="qwen2.5:1.5b"),
     benchmarks=[BenchmarkConfig(id="mmlu", provider_id="lm_evaluation_harness")],
     experiment=ExperimentConfig(name="my-experiment")
 ))
 ```
 
+</TabItem>
+<TabItem label="curl">
+
+```bash {15-17}
+curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "llama3-mlflow-eval",
+    "model": {
+      "url": "http://localhost:11434/v1",
+      "name": "qwen2.5:1.5b"
+    },
+    "benchmarks": [
+      {
+        "id": "mmlu",
+        "provider_id": "lm_evaluation_harness"
+      }
+    ],
+    "experiment": {
+      "name": "my-experiment"
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+### Export Results
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+# JSON
+evalhub eval results eval-a1b2c3d4 --format json > results.json
+
+# CSV
+evalhub eval results eval-a1b2c3d4 --format csv > results.csv
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+```python
+result = client.jobs.wait_for_completion(job.id, timeout=3600)
+
+# Access results directly
+for r in result.results:
+    print(f"{r.benchmark_id}: {r.overall_score}")
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```bash
+curl -s http://localhost:8080/api/v1/evaluations/jobs/eval-a1b2c3d4 \
+  | jq '.results'
+```
+
+</TabItem>
+</Tabs>
+
 ### Export Results to OCI Registry
 
-EvalHub can persist evaluation result files as OCI Artifacts to a OCI Registry. Each result file is stored as a separate layer in the OCI Artifact, allowing consumers to selectively pull only the content they need (e.g. a summary JSON, individual adapter output files, or all files).
+EvalHub can persist evaluation result files as OCI Artifacts to an OCI Registry. Each result file is stored as a separate layer in the OCI Artifact, allowing consumers to selectively pull only the content they need (e.g. a summary JSON, individual adapter output files, or all files).
 
 First, create a Kubernetes Secret with your registry credentials (aka "OCI Connection"):
 
@@ -161,6 +397,51 @@ data:
 ```
 
 Then reference it in the job submission using the `exports.oci` field:
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+evalhub eval run \
+  --name my-eval-job1 \
+  --model-url http://vllm-llama3-8b-instruct-svc.evalhub-test.svc.cluster.local:8000/v1 \
+  --model-name meta-llama/Llama-3.2-1B-Instruct \
+  --provider demo \
+  --benchmark demo_benchmark \
+  --oci-host quay.io \
+  --oci-repository myorg/myartifact \
+  --oci-connection my-oci-credentials
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+```python
+from evalhub.models.api import JobExports, OCIExportConfig, OCICoordinates, K8sConnection
+
+job = client.jobs.submit(JobSubmissionRequest(
+    name="my-eval-job1",
+    model=ModelConfig(
+        url="http://vllm-llama3-8b-instruct-svc.evalhub-test.svc.cluster.local:8000/v1",
+        name="meta-llama/Llama-3.2-1B-Instruct"
+    ),
+    benchmarks=[
+        BenchmarkConfig(id="demo_benchmark", provider_id="demo")
+    ],
+    exports=JobExports(
+        oci=OCIExportConfig(
+            coordinates=OCICoordinates(
+                oci_host="quay.io",
+                oci_repository="myorg/myartifact"
+            ),
+            k8s=K8sConnection(connection="my-oci-credentials")
+        )
+    )
+))
+```
+
+</TabItem>
+<TabItem label="curl">
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
@@ -190,6 +471,9 @@ curl -s -X POST http://localhost:8080/api/v1/evaluations/jobs \
     }
   }'
 ```
+
+</TabItem>
+</Tabs>
 
 When the evaluation completes, the adapter pushes an OCI Artifact to the specified repository (e.g. `quay.io/myorg/myartifact`). The `k8s.connection` field references the name of the Kubernetes Secret containing the registry credentials.
 
