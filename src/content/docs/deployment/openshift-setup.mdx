@@ -2,13 +2,9 @@
 title: "OpenShift Development Setup"
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Complete guide for deploying and developing EvalHub on OpenShift with OpenDataHub.
-
-## Overview
-
-This guide covers deploying a custom EvalHub instance on OpenShift integrated with OpenDataHub.
 
 :::note[OpenDataHub Integration]
 EvalHub is integrated into OpenDataHub via the TrustyAI Operator, which manages EvalHub deployments as custom resources.
@@ -45,66 +41,68 @@ Installing OpenDataHub and the TrustyAI Operator requires cluster-admin or equiv
 
 OpenDataHub provides the foundation for deploying EvalHub on OpenShift.
 
-### 1. Install OpenDataHub Operator
+<Steps>
 
-Install the OpenDataHub Operator (version 3.3 or higher) from OperatorHub in the OpenShift web console:
+1. **Install OpenDataHub Operator**
 
-1. Navigate to **Operators → OperatorHub**
-2. Search for "OpenDataHub"
-3. Click **Install**
-4. Select **fast** channel
-5. Choose **All namespaces on the cluster** installation mode
-6. Click **Install**
+   Install the OpenDataHub Operator (version 3.3 or higher) from OperatorHub in the OpenShift web console:
 
-Wait for the operator installation to complete:
+   1. Navigate to **Operators → OperatorHub**
+   2. Search for "OpenDataHub"
+   3. Click **Install**
+   4. Select **fast** channel
+   5. Choose **All namespaces on the cluster** installation mode
+   6. Click **Install**
 
-```bash
-# Check operator installation
-oc get csv -n openshift-operators | grep opendatahub
+   Wait for the operator installation to complete:
 
-# Should show PHASE: "Succeeded"
-```
+   ```bash
+   # Check operator installation
+   oc get csv -n openshift-operators | grep opendatahub
 
-### 2. Configure OpenDataHub
+   # Should show PHASE: "Succeeded"
+   ```
 
-After the operator is installed, configure OpenDataHub from the operator's dashboard:
+2. **Configure OpenDataHub**
 
-1. Navigate to **Operators → Installed Operators**
-2. Select **OpenDataHub Operator**
-3. Go to the **DSCInitialization** tab
-4. Click **Create DSCInitialization**
-5. Review or just use default settings
-6. Click **Create**
-7. Await "Phase: Ready"
-7. Go to the **Data Science Cluster** tab
-8. Click **Create DataScienceCluster**
-9. Review or just use default settings for most components, do not save/create yet
-10. **Important**: Under the TrustyAI component, configure LMEval security settings:
-   - Set `permitCodeExecution` to **allow**
-   - Set `permitOnline` to **allow**
-11. Click **Create**
+   After the operator is installed, configure OpenDataHub from the operator's dashboard:
 
-:::caution[Security Settings]
-The `permitCodeExecution` and `permitOnline` settings control whether evaluation jobs can execute arbitrary code or access the internet. For development and testing, set these to `allow`. For production deployments, consider setting to `deny` based on your security requirements.
-:::
+   1. Navigate to **Operators → Installed Operators**
+   2. Select **OpenDataHub Operator**
+   3. Go to the **DSCInitialization** tab
+   4. Click **Create DSCInitialization**
+   5. Review or just use default settings
+   6. Click **Create**
+   7. Await "Phase: Ready"
+   8. Go to the **Data Science Cluster** tab
+   9. Click **Create DataScienceCluster**
+   10. Review or just use default settings for most components, do not save/create yet
+   11. **Important**: Under the TrustyAI component, configure LMEval security settings:
+       - Set `permitCodeExecution` to **allow**
+       - Set `permitOnline` to **allow**
+   12. Click **Create**
 
-Verify the DataScienceCluster is ready:
+   :::caution[Security Settings]
+   The `permitCodeExecution` and `permitOnline` settings control whether evaluation jobs can execute arbitrary code or access the internet. For development and testing, set these to `allow`. For production deployments, consider setting to `deny` based on your security requirements.
+   :::
 
-```bash
-# Check DSC status
-oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
+   Verify the DataScienceCluster is ready:
 
-# Should output: "Ready"
+   ```bash
+   # Check DSC status
+   oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
 
-# List deployed components
-oc get pods -n opendatahub
-```
+   # Should output: "Ready"
+
+   # List deployed components
+   oc get pods -n opendatahub
+   ```
+
+</Steps>
 
 ## TrustyAI Operator Deployment
 
 The TrustyAI Operator manages EvalHub custom resources.
-
-### 1. Verify TrustyAI Operator Installation
 
 The TrustyAI Operator is installed automatically as part of the DataScienceCluster:
 
@@ -126,553 +124,521 @@ Example CRDs (actual list may vary):
 
 Deploy an EvalHub instance using a custom resource.
 
-### 1. Create EvalHub Namespace
+<Steps>
 
-```bash
-# Create namespace for EvalHub workloads
-oc create namespace evalhub-test
+1. **Create EvalHub Namespace**
 
-# Label for monitoring and networking
-oc label namespace evalhub-test \
-  opendatahub.io/dashboard=true \
-  evalhub.trustyai.io/managed=true
-```
+   ```bash
+   # Create namespace for EvalHub workloads
+   oc create namespace evalhub-test
 
-### 2. Deploy EvalHub Instance
+   # Label for monitoring and networking
+   oc label namespace evalhub-test \
+     opendatahub.io/dashboard=true \
+     evalhub.trustyai.io/managed=true
+   ```
 
-EvalHub requires an explicit database configuration via `spec.database.type`. Choose SQLite for development and testing, or PostgreSQL for production.
+2. **Deploy EvalHub Instance**
 
-<Tabs>
-<TabItem label="SQLite (development/testing)">
+   EvalHub requires an explicit database configuration via `spec.database.type`. Choose SQLite for development and testing, or PostgreSQL for production.
 
-SQLite runs in-process with no external database required. The operator configures an in-memory SQLite database automatically — no Secret is needed. Data is lost when the pod restarts.
+   <Tabs>
+   <TabItem label="SQLite (development/testing)">
 
-```bash
-oc apply -f - <<EOF
-apiVersion: trustyai.opendatahub.io/v1alpha1
-kind: EvalHub
-metadata:
-  name: evalhub
-  namespace: evalhub-test
-spec:
-  replicas: 1
-  database:
-    type: sqlite
-  providers:
-    - lm-evaluation-harness
-    - garak
-    - garak-kfp
-    - guidellm
-    - lighteval
-    - ibm-clear
-  collections:
-    - leaderboard-v2
-    - safety-and-fairness-v1
-    - toxicity-and-ethical-principles
-EOF
-```
+   SQLite runs in-process with no external database required. The operator configures an in-memory SQLite database automatically — no Secret is needed. Data is lost when the pod restarts.
 
-</TabItem>
+   ```bash
+   oc apply -f - <<EOF
+   apiVersion: trustyai.opendatahub.io/v1alpha1
+   kind: EvalHub
+   metadata:
+     name: evalhub
+     namespace: evalhub-test
+   spec:
+     replicas: 1
+     database:
+       type: sqlite
+     providers:
+       - lm-evaluation-harness
+       - garak
+       - garak-kfp
+       - guidellm
+       - lighteval
+       - ibm-clear
+     collections:
+       - leaderboard-v2
+       - safety-and-fairness-v1
+       - toxicity-and-ethical-principles
+   EOF
+   ```
 
-<TabItem label="PostgreSQL (production)">
+   </TabItem>
 
-PostgreSQL provides durable, persistent storage. Create a Secret containing the connection URL first, then reference it in the CR.
+   <TabItem label="PostgreSQL (production)">
 
-```bash
-oc apply -f - <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: evalhub-db-credentials
-  namespace: evalhub-test
-type: Opaque
-stringData:
-  db-url: "postgres://user:password@db-host:5432/evalhub"
-EOF
+   PostgreSQL provides durable, persistent storage. Create a Secret containing the connection URL first, then reference it in the CR.
 
-oc apply -f - <<EOF
-apiVersion: trustyai.opendatahub.io/v1alpha1
-kind: EvalHub
-metadata:
-  name: evalhub
-  namespace: evalhub-test
-spec:
-  replicas: 1
-  database:
-    type: postgresql
-    secret: evalhub-db-credentials
-  providers:
-    - lm-evaluation-harness
-    - garak
-    - garak-kfp
-    - guidellm
-    - lighteval
-    - ibm-clear
-  collections:
-    - leaderboard-v2
-    - safety-and-fairness-v1
-    - toxicity-and-ethical-principles
-EOF
-```
+   ```bash
+   oc apply -f - <<EOF
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: evalhub-db-credentials
+     namespace: evalhub-test
+   type: Opaque
+   stringData:
+     db-url: "postgres://user:password@db-host:5432/evalhub"
+   EOF
 
-</TabItem>
-</Tabs>
+   oc apply -f - <<EOF
+   apiVersion: trustyai.opendatahub.io/v1alpha1
+   kind: EvalHub
+   metadata:
+     name: evalhub
+     namespace: evalhub-test
+   spec:
+     replicas: 1
+     database:
+       type: postgresql
+       secret: evalhub-db-credentials
+     providers:
+       - lm-evaluation-harness
+       - garak
+       - garak-kfp
+       - guidellm
+       - lighteval
+       - ibm-clear
+     collections:
+       - leaderboard-v2
+       - safety-and-fairness-v1
+       - toxicity-and-ethical-principles
+   EOF
+   ```
 
-#### EvalHub Custom Resource Spec
+   </TabItem>
+   </Tabs>
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `spec.replicas` | No | Number of EvalHub server replicas. Default: `1`. |
-| `spec.database.type` | **Yes** | Database backend. `sqlite` for in-memory development/testing (no external database needed); `postgresql` for production. |
-| `spec.database.secret` | When `type: postgresql` | Name of a Kubernetes `Secret` in the same namespace containing a `db-url` key with the PostgreSQL connection string (e.g. `postgres://user:pass@host:5432/evalhub`). Ignored for SQLite. |
-| `spec.database.maxOpenConns` | No | Maximum open database connections (PostgreSQL only). Default: `25`. |
-| `spec.database.maxIdleConns` | No | Maximum idle database connections (PostgreSQL only). Default: `5`. |
-| `spec.providers` | No | List of built-in provider names to enable. Defaults to `garak`, `guidellm`, `lighteval`, `lm-evaluation-harness` when omitted. |
-| `spec.collections` | No | List of built-in collection names to expose (e.g. `leaderboard-v2`). |
-| `spec.env` | No | Additional environment variables injected into the EvalHub server container, as a list of `name`/`value` pairs. |
-| `spec.otel` | No | OpenTelemetry configuration. See [System Overview](/architecture/system-overview/) for details. |
+   #### EvalHub Custom Resource Spec
 
-### 3. Verify Deployment
+   | Field | Required | Description |
+   |-------|----------|-------------|
+   | `spec.replicas` | No | Number of EvalHub server replicas. Default: `1`. |
+   | `spec.database.type` | **Yes** | Database backend. `sqlite` for in-memory development/testing (no external database needed); `postgresql` for production. |
+   | `spec.database.secret` | When `type: postgresql` | Name of a Kubernetes `Secret` in the same namespace containing a `db-url` key with the PostgreSQL connection string (e.g. `postgres://user:pass@host:5432/evalhub`). Ignored for SQLite. |
+   | `spec.database.maxOpenConns` | No | Maximum open database connections (PostgreSQL only). Default: `25`. |
+   | `spec.database.maxIdleConns` | No | Maximum idle database connections (PostgreSQL only). Default: `5`. |
+   | `spec.providers` | No | List of built-in provider names to enable. Defaults to `garak`, `guidellm`, `lighteval`, `lm-evaluation-harness` when omitted. |
+   | `spec.collections` | No | List of built-in collection names to expose (e.g. `leaderboard-v2`). |
+   | `spec.env` | No | Additional environment variables injected into the EvalHub server container, as a list of `name`/`value` pairs. |
+   | `spec.otel` | No | OpenTelemetry configuration. See [System Overview](/architecture/system-overview/) for details. |
 
-```bash
-# Check EvalHub CR status
-oc get evalhub evalhub -n evalhub-test
+3. **Verify Deployment**
 
-# Should show STATUS: Ready
+   ```bash
+   # Check EvalHub CR status
+   oc get evalhub evalhub -n evalhub-test
 
-# Check EvalHub pods
-oc get pods -n evalhub-test -l app=eval-hub
+   # Should show STATUS: Ready
 
-# Check EvalHub service
-oc get svc -n evalhub-test -l app=eval-hub
+   # Check EvalHub pods
+   oc get pods -n evalhub-test -l app=eval-hub
 
-# Check route (if OAuth is enabled)
-oc get route -n evalhub-test -l app=eval-hub
-```
+   # Check EvalHub service
+   oc get svc -n evalhub-test -l app=eval-hub
 
-### 4. Access EvalHub
+   # Check route (if OAuth is enabled)
+   oc get route -n evalhub-test -l app=eval-hub
+   ```
 
-Get the EvalHub URL:
+4. **Access EvalHub**
 
-```bash
-# Get route URL
-EVALHUB_URL=$(oc get route evalhub -n evalhub-test -o jsonpath='{.spec.host}')
-echo "EvalHub URL: https://$EVALHUB_URL"
+   Get the EvalHub URL:
 
-# Test health endpoint
-curl -k "https://$EVALHUB_URL/api/v1/health"
-```
+   ```bash
+   # Get route URL
+   EVALHUB_URL=$(oc get route evalhub -n evalhub-test -o jsonpath='{.spec.host}')
+   echo "EvalHub URL: https://$EVALHUB_URL"
 
-With OAuth enabled:
+   # Test health endpoint
+   curl -k "https://$EVALHUB_URL/api/v1/health"
+   ```
 
-```bash
-# Get authentication token
-TOKEN=$(oc whoami -t)
+   With OAuth enabled:
 
-# Access EvalHub with token
-curl -k -H "Authorization: Bearer $TOKEN" \
-  "https://$EVALHUB_URL/api/v1/evaluations/providers"
-```
+   ```bash
+   # Get authentication token
+   TOKEN=$(oc whoami -t)
+
+   # Access EvalHub with token
+   curl -k -H "Authorization: Bearer $TOKEN" \
+     "https://$EVALHUB_URL/api/v1/evaluations/providers"
+   ```
+
+</Steps>
 
 ## Development Workflow
 
 Develop and test custom EvalHub providers on OpenShift.
 
-### 1. Clone Repositories
+<Steps>
 
-```bash
-# Clone EvalHub repositories
-git clone https://github.com/eval-hub/eval-hub.git
-git clone https://github.com/eval-hub/eval-hub-sdk.git
-git clone https://github.com/eval-hub/eval-hub-contrib.git
+1. **Clone Repositories**
 
-# Clone TrustyAI Operator (for operator development)
-git clone https://github.com/trustyai-explainability/trustyai-service-operator.git
-```
+   ```bash
+   # Clone EvalHub repositories
+   git clone https://github.com/eval-hub/eval-hub.git
+   git clone https://github.com/eval-hub/eval-hub-sdk.git
+   git clone https://github.com/eval-hub/eval-hub-contrib.git
 
-### 2. Upload Custom Operator Manifests
+   # Clone TrustyAI Operator (for operator development)
+   git clone https://github.com/trustyai-explainability/trustyai-service-operator.git
+   ```
 
-You can deploy EvalHub directly using the manifests from the cloned TrustyAI operator repository without any modifications. Alternatively, if you want to use custom images or configurations, you can modify the manifests before uploading them.
+2. **Upload Custom Operator Manifests**
 
-For development and testing, you can upload TrustyAI operator manifests directly to the OpenDataHub operator without rebuilding operator images. This allows you to iterate quickly on operator configurations, CRDs, and RBAC definitions.
+   You can deploy EvalHub directly using the manifests from the cloned TrustyAI operator repository without any modifications. Alternatively, if you want to use custom images or configurations, you can modify the manifests before uploading them.
 
-:::caution[Development Only]
-This approach is intended for development and testing only. Production deployments should use proper operator image releases.
-:::
+   For development and testing, you can upload TrustyAI operator manifests directly to the OpenDataHub operator without rebuilding operator images. This allows you to iterate quickly on operator configurations, CRDs, and RBAC definitions.
 
-#### Overview
+   :::caution[Development Only]
+   This approach is intended for development and testing only. Production deployments should use proper operator image releases.
+   :::
 
-The process involves:
+   The process involves creating a PVC for manifests, patching the operator CSV to mount it, copying manifests in, and restarting the operators. This is based on the [OpenDataHub component development workflow](https://raw.githubusercontent.com/opendatahub-io/opendatahub-operator/refs/heads/main/hack/component-dev/README.md).
 
-1. Creating a PersistentVolumeClaim to store custom manifests
-2. Patching the OpenDataHub operator CSV to mount the PVC
-3. Copying your custom manifests into the operator pod
-4. Restarting the operators to load the new manifests
+   **Prepare custom manifests:**
 
-This is based on the [OpenDataHub component development workflow](https://raw.githubusercontent.com/opendatahub-io/opendatahub-operator/refs/heads/main/hack/component-dev/README.md).
+   ```bash
+   cd trustyai-service-operator
+   ```
 
-#### Prepare Custom Manifests
+   The operator repository has the following structure under `config/`:
 
-Clone the TrustyAI operator repository to get the manifests:
+   ```bash
+   config/
+   ├── crd/
+   │   └── bases/
+   │       ├── trustyai.opendatahub.io_evalhubs.yaml
+   │       ├── trustyai.opendatahub.io_lmevaljobrequests.yaml
+   │       └── trustyai.opendatahub.io_trustyaiservices.yaml
+   ├── default/
+   │   ├── kustomization.yaml
+   │   └── manager_auth_proxy_patch.yaml
+   ├── manager/
+   │   ├── kustomization.yaml
+   │   └── manager.yaml
+   ├── manifests/
+   │   └── ...
+   ├── overlays/
+   │   └── odh/
+   │       ├── kustomization.yaml
+   │       └── params.env
+   ├── rbac/
+   │   └── ...
+   └── samples/
+       └── ...
+   ```
 
-```bash
-# Clone TrustyAI operator (if not already cloned)
-git clone https://github.com/trustyai-explainability/trustyai-service-operator.git
-cd trustyai-service-operator
-```
+   To customize, edit the configuration files:
 
-The operator repository has the following structure under `config/`:
+   ```bash
+   # Example: Update image references
+   vim config/overlays/odh/params.env
 
-```bash
-config/
-├── crd/
-│   └── bases/
-│       ├── trustyai.opendatahub.io_evalhubs.yaml
-│       ├── trustyai.opendatahub.io_lmevaljobrequests.yaml
-│       └── trustyai.opendatahub.io_trustyaiservices.yaml
-├── default/
-│   ├── kustomization.yaml
-│   └── manager_auth_proxy_patch.yaml
-├── manager/
-│   ├── kustomization.yaml
-│   └── manager.yaml
-├── manifests/
-│   └── ...
-├── overlays/
-│   └── odh/
-│       ├── kustomization.yaml
-│       └── params.env
-├── rbac/
-│   ├── auth_proxy_client_clusterrole.yaml
-│   ├── auth_proxy_role.yaml
-│   ├── auth_proxy_role_binding.yaml
-│   ├── auth_proxy_service.yaml
-│   ├── evalhub_jobs_proxy_role.yaml
-│   ├── evalhub_resource_manager_binding.yaml
-│   ├── evalhub_resource_manager_role.yaml
-│   ├── kustomization.yaml
-│   ├── leader_election_role.yaml
-│   ├── leader_election_role_binding.yaml
-│   ├── role.yaml
-│   ├── role_binding.yaml
-│   ├── service_account.yaml
-│   └── ...
-└── samples/
-    └── ...
-```
+   # Example: Modify RBAC permissions
+   vim config/rbac/evalhub_resource_manager_role.yaml
+   ```
 
-To deploy as-is, use the manifests without modifications. To customize, edit the configuration files:
+   :::note
+   In the remainder of this document, references to `./config` in shell commands refer to the `config/` directory within the `trustyai-service-operator` repository cloned above.
+   :::
 
-```bash
-# Example: Update image references
-vim config/overlays/odh/params.env
+   **Upload manifests to the operator:**
 
-# Example: Modify RBAC permissions
-vim config/rbac/evalhub_resource_manager_role.yaml
-```
+   <Steps>
 
-:::note
-In the remainder of this document, references to `./config` in shell commands refer to the `config/` directory within the `trustyai-service-operator` repository cloned above.
-:::
+   1. **Create PersistentVolumeClaim**
 
-#### Upload Manifests
+      ```bash
+      cat <<EOF | oc apply -n openshift-operators -f -
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: trustyai-manifests
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+      EOF
+      ```
 
-Follow these steps to upload your custom manifests to the OpenDataHub operator:
+   2. **Patch CSV to mount manifests**
 
-**Step 1: Create PersistentVolumeClaim**
+      ```bash
+      # Get the OpenDataHub operator CSV name
+      CSV=$(oc get csv -n openshift-operators -o name | grep opendatahub-operator | head -n1 | cut -d/ -f2)
 
-```bash
-cat <<EOF | oc apply -n openshift-operators -f -
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: trustyai-manifests
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-EOF
-```
+      # Patch CSV to mount the PVC
+      oc patch csv "${CSV}" -n openshift-operators --type json -p '[
+        {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/replicas", "value": 1},
+        {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/strategy/type", "value": "Recreate"},
+        {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/securityContext", "value": {"fsGroup": 1001}},
+        {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/-", "value": {"name": "trustyai-manifests", "persistentVolumeClaim": {"claimName": "trustyai-manifests"}}},
+        {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/volumeMounts/-", "value": {"name": "trustyai-manifests", "mountPath": "/opt/manifests/trustyai"}}
+      ]'
+      ```
 
-**Step 2: Patch CSV to mount manifests**
+      :::note[CSV Patch Idempotency]
+      The patch command may fail if already applied. This is expected and can be safely ignored.
+      :::
 
-```bash
-# Get the OpenDataHub operator CSV name
-CSV=$(oc get csv -n openshift-operators -o name | grep opendatahub-operator | head -n1 | cut -d/ -f2)
+   3. **Copy manifests into operator pod**
 
-# Patch CSV to mount the PVC
-oc patch csv "${CSV}" -n openshift-operators --type json -p '[
-  {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/replicas", "value": 1},
-  {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/strategy/type", "value": "Recreate"},
-  {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/securityContext", "value": {"fsGroup": 1001}},
-  {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/volumes/-", "value": {"name": "trustyai-manifests", "persistentVolumeClaim": {"claimName": "trustyai-manifests"}}},
-  {"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/volumeMounts/-", "value": {"name": "trustyai-manifests", "mountPath": "/opt/manifests/trustyai"}}
-]'
-```
+      ```bash
+      # Wait for the operator pod to be ready after patching
+      oc wait --for=condition=ready pod -n openshift-operators -l name=opendatahub-operator --timeout=120s
 
-:::note[CSV Patch Idempotency]
-The patch command may fail if already applied. This is expected and can be safely ignored.
-:::
+      # Get the operator pod name
+      POD=$(oc get pod -n openshift-operators -l name=opendatahub-operator -o jsonpath='{.items[0].metadata.name}')
 
-**Step 3: Copy manifests into operator pod**
+      # Copy manifests from your local repository to the operator pod
+      oc cp ./config/. openshift-operators/${POD}:/opt/manifests/trustyai
+      ```
 
-```bash
-# Wait for the operator pod to be ready after patching
-oc wait --for=condition=ready pod -n openshift-operators -l name=opendatahub-operator --timeout=120s
+   4. **Restart operators**
 
-# Get the operator pod name
-POD=$(oc get pod -n openshift-operators -l name=opendatahub-operator -o jsonpath='{.items[0].metadata.name}')
+      ```bash
+      # Restart OpenDataHub operator
+      oc rollout restart deploy -n openshift-operators -l name=opendatahub-operator
+      oc rollout status deploy -n openshift-operators -l name=opendatahub-operator
 
-# Copy manifests from your local repository to the operator pod
-oc cp ./config/. openshift-operators/${POD}:/opt/manifests/trustyai
-```
+      # Restart TrustyAI operator
+      oc rollout restart deployment/trustyai-service-operator-controller-manager -n opendatahub
+      ```
 
-**Step 4: Restart operators**
+      Wait for the operators to be ready:
 
-```bash
-# Restart OpenDataHub operator
-oc rollout restart deploy -n openshift-operators -l name=opendatahub-operator
-oc rollout status deploy -n openshift-operators -l name=opendatahub-operator
+      ```bash
+      # Wait for OpenDataHub operator
+      oc wait --for=condition=available deployment -n openshift-operators -l name=opendatahub-operator --timeout=120s
 
-# Restart TrustyAI operator
-oc rollout restart deployment/trustyai-service-operator-controller-manager -n opendatahub
-```
+      # Wait for TrustyAI operator
+      oc wait --for=condition=available deployment/trustyai-service-operator-controller-manager -n opendatahub --timeout=120s
+      ```
 
-Wait for the operators to be ready:
+   </Steps>
 
-```bash
-# Wait for OpenDataHub operator
-oc wait --for=condition=available deployment -n openshift-operators -l name=opendatahub-operator --timeout=120s
+   **Verify custom manifests:**
 
-# Wait for TrustyAI operator
-oc wait --for=condition=available deployment/trustyai-service-operator-controller-manager -n opendatahub --timeout=120s
-```
+   ```bash
+   # Check operator pods are running
+   oc get pods -n openshift-operators -l name=opendatahub-operator
+   oc get pods -n opendatahub -l  app.kubernetes.io/part-of=trustyai
 
-#### Verify Custom Manifests
+   # Check TrustyAI operator logs for manifest loading
+   oc logs -n opendatahub -l  app.kubernetes.io/part-of=trustyai --tail=50
 
-After uploading and restarting, verify the operators are using your custom manifests:
+   # Verify ConfigMap has your custom values
+   oc get configmap trustyai-service-operator-config -n opendatahub -o yaml
+   ```
 
-```bash
-# Check operator pods are running
-oc get pods -n openshift-operators -l name=opendatahub-operator
-oc get pods -n opendatahub -l  app.kubernetes.io/part-of=trustyai
+   Test your changes by creating or updating an EvalHub CR:
 
-# Check TrustyAI operator logs for manifest loading
-oc logs -n opendatahub -l  app.kubernetes.io/part-of=trustyai --tail=50
+   ```bash
+   # Delete existing EvalHub if it exists
+   oc delete evalhub evalhub -n evalhub-test --ignore-not-found
 
-# Verify ConfigMap has your custom values
-oc get configmap trustyai-service-operator-config -n opendatahub -o yaml
-```
+   # Create EvalHub with custom manifests
+   oc apply -f - <<EOF
+   apiVersion: trustyai.opendatahub.io/v1alpha1
+   kind: EvalHub
+   metadata:
+     name: evalhub
+     namespace: evalhub-test
+   spec:
+     replicas: 1
+     database:
+       type: sqlite
+     providers:
+       - lm-evaluation-harness
+       - garak
+       - garak-kfp
+       - guidellm
+       - lighteval
+       - ibm-clear
+     collections:
+       - leaderboard-v2
+       - safety-and-fairness-v1
+       - toxicity-and-ethical-principles
+   EOF
 
-Test your changes by creating or updating an EvalHub CR:
+   # Check if custom changes are applied
+   oc get evalhub evalhub -n evalhub-test -o yaml
+   oc get pods -n evalhub-test -l app=eval-hub
+   ```
 
-```bash
-# Delete existing EvalHub if it exists
-oc delete evalhub evalhub -n evalhub-test --ignore-not-found
+   **Iterate on changes** by repeating the copy and restart commands:
 
-# Create EvalHub with custom manifests
-oc apply -f - <<EOF
-apiVersion: trustyai.opendatahub.io/v1alpha1
-kind: EvalHub
-metadata:
-  name: evalhub
-  namespace: evalhub-test
-spec:
-  replicas: 1
-  database:
-    type: sqlite
-  providers:
-    - lm-evaluation-harness
-    - garak
-    - garak-kfp
-    - guidellm
-    - lighteval
-    - ibm-clear
-  collections:
-    - leaderboard-v2
-    - safety-and-fairness-v1
-    - toxicity-and-ethical-principles
-EOF
-
-# Check if custom changes are applied
-oc get evalhub evalhub -n evalhub-test -o yaml
-oc get pods -n evalhub-test -l app=eval-hub
-```
-
-#### Iterate on Changes
-
-To update your manifests during development:
-
-1. **Modify manifests** in your local directory (e.g., `./trustyai-service-operator/config/`)
-2. **Copy updated manifests to the operator pod**:
    ```bash
    POD=$(oc get pod -n openshift-operators -l name=opendatahub-operator -o jsonpath='{.items[0].metadata.name}')
    oc cp ./config/. openshift-operators/${POD}:/opt/manifests/trustyai
+   oc rollout restart deploy -n openshift-operators -l name=opendatahub-operator
+   oc rollout restart deployment/trustyai-service-operator-controller-manager -n opendatahub
    ```
-3. **Restart operators**:
+
+   :::note[Important notes]
+   - **RWO Storage**: The PVC uses ReadWriteOnce access mode, requiring single-replica operator deployment
+   - **Recreate Strategy**: The CSV is patched to use "Recreate" deployment strategy to avoid PVC conflicts
+   - **Not Idempotent**: The CSV patch may fail if already applied (this is expected)
+   :::
+
+   **Cleanup** — to remove custom manifests and restore the operator to default:
+
    ```bash
+   # Delete the PVC
+   oc delete pvc trustyai-manifests -n openshift-operators
+
+   # Restore CSV to default by reinstalling the operator
+   # Or manually remove the volumeMounts and volumes from the CSV
+   ```
+
+3. **Build Custom EvalHub Image**
+
+   If you want to use a custom EvalHub server image (for example, with modified code or dependencies), build and push it to your container registry, then update the operator manifests before uploading them.
+
+   Login to Quay if you haven't done already:
+
+   ```sh
+   podman login quay.io
+   ```
+
+   Build a custom EvalHub server image:
+
+   ```bash
+   cd eval-hub
+   IMG=quay.io/your-org/evalhub
+
+   # Build with Podman
+   podman build --platform linux/amd64 -t $IMG .
+
+   # Push to registry
+   podman push $IMG
+   ```
+
+   Update the operator manifests to use your custom image:
+
+   ```bash
+   # Edit the params.env file in the operator repository
+   cd trustyai-service-operator
+   vim config/overlays/odh/params.env
+
+   # Change evalHubImage to your custom image
+   # evalHubImage=quay.io/your-org/evalhub:latest
+   ```
+
+   Then upload the modified manifests using the commands from the previous step:
+
+   ```bash
+   # Copy manifests to operator pod
+   POD=$(oc get pod -n openshift-operators -l name=opendatahub-operator -o jsonpath='{.items[0].metadata.name}')
+   oc cp ./config/. openshift-operators/${POD}:/opt/manifests/trustyai
+
+   # Restart operators
    oc rollout restart deploy -n openshift-operators -l name=opendatahub-operator
    oc rollout status deploy -n openshift-operators -l name=opendatahub-operator
    oc rollout restart deployment/trustyai-service-operator-controller-manager -n opendatahub
    ```
-4. **Test changes** by recreating the EvalHub CR
 
-The operators will automatically load your updated manifests.
+   Delete and recreate the EvalHub instance to use the new image:
 
-#### Important Notes
+   ```bash
+   # Delete existing instance
+   oc delete evalhub evalhub -n evalhub-test
 
-- **RWO Storage**: The PVC uses ReadWriteOnce access mode, requiring single-replica operator deployment
-- **Recreate Strategy**: The CSV is patched to use "Recreate" deployment strategy to avoid PVC conflicts
-- **Not Idempotent**: The CSV patch may fail if already applied (this is expected)
-- **Development Only**: This workflow is not suitable for production deployments
+   # Recreate with new image
+   oc apply -f - <<EOF
+   apiVersion: trustyai.opendatahub.io/v1alpha1
+   kind: EvalHub
+   metadata:
+     name: evalhub
+     namespace: evalhub-test
+   spec:
+     replicas: 1
+     database:
+       type: sqlite
+     providers:
+       - lm-evaluation-harness
+       - garak
+       - garak-kfp
+       - guidellm
+       - lighteval
+       - ibm-clear
+     collections:
+       - leaderboard-v2
+       - safety-and-fairness-v1
+       - toxicity-and-ethical-principles
+   EOF
+   ```
 
-#### Cleanup
+4. **Test Deployment**
 
-To remove custom manifests and restore the operator to default:
+   Verify the EvalHub deployment by listing available providers and submitting a test evaluation.
 
-```bash
-# Delete the PVC
-oc delete pvc trustyai-manifests -n openshift-operators
+   **List available providers:**
 
-# Restore CSV to default by reinstalling the operator
-# Or manually remove the volumeMounts and volumes from the CSV
-```
+   ```bash
+   # Get EvalHub URL and token
+   EVALHUB_URL=$(oc get route evalhub -n evalhub-test -o jsonpath='{.spec.host}')
+   TOKEN=$(oc whoami -t)
 
-### 3. Build Custom EvalHub Image
+   # List all providers
+   curl -sS -k -H "Authorization: Bearer $TOKEN" \
+     "https://$EVALHUB_URL/api/v1/evaluations/providers" | jq .
 
-If you want to use a custom EvalHub server image (for example, with modified code or dependencies), build and push it to your container registry, then update the operator manifests before uploading them.
+   # Get a specific provider (includes benchmarks by default)
+   curl -sS -k -H "Authorization: Bearer $TOKEN" \
+     "https://$EVALHUB_URL/api/v1/evaluations/providers/lm_evaluation_harness" | jq .
+   ```
 
-Login to Quay if you haven't done already:
+   **Submit a test evaluation:**
 
-```sh
-podman login quay.io
-```
+   ```bash
+   # Create evaluation request
+   cat > eval-request.json <<EOF
+   {
+     "model": {
+       "url": "http://vllm-server.models.svc.cluster.local:8000/v1",
+       "name": "Qwen/Qwen3.5-397B-A17B"
+     },
+     "benchmarks": [
+       {
+         "id": "mmlu",
+         "provider_id": "lm_evaluation_harness"
+       }
+     ],
+     "experiment": {
+       "name": "test-deployment",
+       "tags": [
+         {
+           "key": "environment",
+           "value": "development"
+         }
+       ]
+     }
+   }
+   EOF
 
-Build a custom EvalHub server image:
+   # Submit evaluation
+   curl -sS -k -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d @eval-request.json \
+     "https://$EVALHUB_URL/api/v1/evaluations/jobs" | jq .
+   ```
 
-```bash
-cd eval-hub
-IMG=quay.io/your-org/evalhub
-
-# Build with Podman
-podman build --platform linux/amd64 -t $IMG .
-
-# Push to registry
-podman push $IMG
-```
-
-Update the operator manifests to use your custom image:
-
-```bash
-# Edit the params.env file in the operator repository
-cd trustyai-service-operator
-vim config/overlays/odh/params.env
-
-# Change evalHubImage to your custom image
-# evalHubImage=quay.io/your-org/evalhub:latest
-```
-
-Then upload the modified manifests using the commands from the previous section:
-
-```bash
-# Copy manifests to operator pod
-POD=$(oc get pod -n openshift-operators -l name=opendatahub-operator -o jsonpath='{.items[0].metadata.name}')
-oc cp ./config/. openshift-operators/${POD}:/opt/manifests/trustyai
-
-# Restart operators
-oc rollout restart deploy -n openshift-operators -l name=opendatahub-operator
-oc rollout status deploy -n openshift-operators -l name=opendatahub-operator
-oc rollout restart deployment/trustyai-service-operator-controller-manager -n opendatahub
-```
-
-Delete and recreate the EvalHub instance to use the new image:
-
-```bash
-# Delete existing instance
-oc delete evalhub evalhub -n evalhub-test
-
-# Recreate with new image
-oc apply -f - <<EOF
-apiVersion: trustyai.opendatahub.io/v1alpha1
-kind: EvalHub
-metadata:
-  name: evalhub
-  namespace: evalhub-test
-spec:
-  replicas: 1
-  database:
-    type: sqlite
-  providers:
-    - lm-evaluation-harness
-    - garak
-    - garak-kfp
-    - guidellm
-    - lighteval
-    - ibm-clear
-  collections:
-    - leaderboard-v2
-    - safety-and-fairness-v1
-    - toxicity-and-ethical-principles
-EOF
-```
-
-### 4. Test Deployment
-
-Verify the EvalHub deployment by listing available providers and submitting a test evaluation.
-
-**List available providers:**
-
-```bash
-# Get EvalHub URL and token
-EVALHUB_URL=$(oc get route evalhub -n evalhub-test -o jsonpath='{.spec.host}')
-TOKEN=$(oc whoami -t)
-
-# List all providers
-curl -sS -k -H "Authorization: Bearer $TOKEN" \
-  "https://$EVALHUB_URL/api/v1/evaluations/providers" | jq .
-
-# Get a specific provider (includes benchmarks by default)
-curl -sS -k -H "Authorization: Bearer $TOKEN" \
-  "https://$EVALHUB_URL/api/v1/evaluations/providers/lm_evaluation_harness" | jq .
-```
-
-**Submit a test evaluation:**
-
-```bash
-# Create evaluation request
-cat > eval-request.json <<EOF
-{
-  "model": {
-    "url": "http://vllm-server.models.svc.cluster.local:8000/v1",
-    "name": "Qwen/Qwen3.5-397B-A17B"
-  },
-  "benchmarks": [
-    {
-      "id": "mmlu",
-      "provider_id": "lm_evaluation_harness"
-    }
-  ],
-  "experiment": {
-    "name": "test-deployment",
-    "tags": [
-      {
-        "key": "environment",
-        "value": "development"
-      }
-    ]
-  }
-}
-EOF
-
-# Submit evaluation
-curl -sS -k -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @eval-request.json \
-  "https://$EVALHUB_URL/api/v1/evaluations/jobs" | jq .
-```
+</Steps>
 
 ## Deploying an OpenAI-compatible simulator
 
@@ -694,7 +660,7 @@ This makes the simulator available as an internal service at:
 
 The service exposes an OpenAI-compatible endpoint (e.g. `/v1/chat/completions`).
 
-You can verify the simulator is working from within the namesapce in the cluster (for example by opening a Terminal on the evalhub Pod) with:
+You can verify the simulator is working from within the namespace in the cluster (for example by opening a Terminal on the evalhub Pod) with:
 
 ```sh
 export SIM_URL=vllm-sim-demo-svc.evalhub-test.svc.cluster.local:8000
