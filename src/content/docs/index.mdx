@@ -2,115 +2,78 @@
 title: "EvalHub"
 ---
 
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
 Open source evaluation orchestration platform for Large Language Models.
 
-## What is EvalHub?
-
-EvalHub is an evaluation orchestration platform for systematic LLM evaluation. It supports local development and Kubernetes-native deployment at scale. The platform consists of three components:
-
-- **[EvalHub Server](https://github.com/eval-hub/eval-hub)**: Go REST API service for managing evaluation workflows
-- **[EvalHub SDK](https://github.com/eval-hub/eval-hub-sdk)**: Python SDK for submitting evaluations and building adapters
-- **[EvalHub Contrib](https://github.com/eval-hub/eval-hub-contrib)**: Community-contributed framework adapters
-
-## Architecture Overview
-
-![EvalHub architecture overview](/images/diagrams/index-architecture.svg)
-
-| Component | Description | Technology |
-|-----------|-------------|------------|
-| **Server** | REST API, job orchestration, provider management | Go, SQLite / PostgreSQL |
-| **SDK** | Client library, adapter framework, data models | Python 3.11+ |
-| **Contrib** | Community framework adapters | Python containers (UBI9) |
-| **Jobs** | Isolated evaluation execution | Kubernetes Jobs |
-| **Registry** | Immutable artifact storage | OCI registries |
-
-### Data Flow
-
-1. **Client submits evaluation** via SDK or REST API
-2. **Server creates Kubernetes Job** with adapter container and sidecar
-3. **ConfigMap mounted** with JobSpec at `/meta/job.json`
-4. **Adapter loads JobSpec**, runs evaluation, reports progress via callbacks
-5. **Sidecar forwards events** to the server via `POST /api/v1/evaluations/jobs/{id}/events`
-6. **Adapter persists artifacts** to OCI registry and logs metrics to MLflow
-7. **Server stores results** in PostgreSQL, returns status to client
-
-## Quick Start
-
-```python
-from evalhub import SyncEvalHubClient
-from evalhub.models.api import ModelConfig, BenchmarkConfig, JobSubmissionRequest
-
-client = SyncEvalHubClient(base_url="http://localhost:8080")
-
-job = client.jobs.submit(JobSubmissionRequest(
-    model=ModelConfig(
-        url="http://localhost:11434/v1",
-        name="qwen2.5:1.5b"
-    ),
-    benchmarks=[
-        BenchmarkConfig(id="mmlu", provider_id="lm_evaluation_harness")
-    ]
-))
-
-result = client.jobs.wait_for_completion(job.id)
-```
+EvalHub provides a unified way to evaluate LLMs across multiple frameworks — submit evaluations via CLI, Python SDK, or REST API and let EvalHub handle orchestration, tracking, and artifact storage. It runs locally for development and scales on Kubernetes for production.
 
 ## Key Features
 
+<CardGrid>
+  <Card title="Multi-framework" icon="puzzle">
+    Evaluate with LightEval, GuideLLM, lm-eval-harness, Garak, MTEB, or bring your own framework.
+  </Card>
+  <Card title="Kubernetes-native" icon="rocket">
+    Each evaluation runs as an isolated Kubernetes Job with automatic lifecycle management.
+  </Card>
+  <Card title="Benchmark Collections" icon="list-format">
+    Group benchmarks with weighted scoring for domain-specific evaluations in a single API call.
+  </Card>
+  <Card title="MLflow Integration" icon="open-book">
+    Track experiments, compare runs, and persist metrics to MLflow automatically.
+  </Card>
+</CardGrid>
+
 - **Versioned REST API** (v1) with OpenAPI specification
 - **Provider registry** with benchmark discovery
-- **Benchmark collections** with weighted scoring
-- **Kubernetes-native** job orchestration
-- **MLflow integration** for experiment tracking
 - **OCI artifact persistence** for evaluation results
-- **Adapter pattern** for "Bring Your Own Framework" (BYOF) extensibility
 - **Prometheus metrics** and OpenTelemetry tracing
+- **Multi-tenancy** with namespace-based isolation and Kubernetes RBAC
 
-## Core Concepts
+## How It Works
 
-### Providers
+![EvalHub architecture overview](/images/diagrams/index-architecture.svg)
 
-Evaluation providers represent frameworks. Each provider has a set of benchmarks and a container image that runs evaluations.
+EvalHub consists of three components:
 
-Built-in providers: `lm_evaluation_harness`, `garak`, `guidellm`, `lighteval`. Custom providers can be registered via YAML configuration or the REST API.
-
-### Benchmarks
-
-Benchmarks are specific evaluation tasks within a provider. Examples: `mmlu` (lm_evaluation_harness), `hellaswag` (lighteval), `sweep` (guidellm).
-
-### Collections
-
-Curated sets of benchmarks with weighted scoring, enabling domain-specific evaluation with a single API call.
-
-```yaml
-collection_id: healthcare_safety_v1
-benchmarks:
-  - benchmark_id: mmlu_medical
-    provider_id: lm_evaluation_harness
-    weight: 2.0
-  - benchmark_id: toxicity
-    provider_id: garak
-    weight: 1.0
-```
-
-### Jobs
-
-Kubernetes Jobs that execute evaluations in isolated pods. Each job has an adapter container (runs the framework) and a sidecar (forwards status events to the server).
-
-### Adapters
-
-Containerised applications implementing the `FrameworkAdapter` interface from the SDK. Each adapter loads a JobSpec, runs the evaluation framework, reports progress via callbacks, persists artifacts to OCI, and returns structured results.
+- **[Server](https://github.com/eval-hub/eval-hub)** — Go REST API that orchestrates evaluation jobs, manages providers, and stores results (SQLite or PostgreSQL)
+- **[SDK](https://github.com/eval-hub/eval-hub-sdk)** — Python client library, CLI, and adapter framework for building integrations
+- **[Contrib](https://github.com/eval-hub/eval-hub-contrib)** — Community-contributed framework adapters packaged as container images
 
 ## Available Adapters
 
-| Adapter | Provider | Metrics |
-|---------|----------|---------|
-| **LightEval** | `lighteval` | accuracy, acc_norm, exact_match |
-| **GuideLLM** | `guidellm` | TTFT, ITL, throughput, latency |
-| **MTEB** | `mteb` | STS, retrieval, classification |
-| **lm-eval-harness** | `lm_evaluation_harness` | 167 benchmarks across 12 categories |
-| **Garak** | `garak` | OWASP Top 10, vulnerability scanning |
+| Adapter | Provider | What it measures |
+|---------|----------|------------------|
+| **lm-eval-harness** | `lm_evaluation_harness` | 167 benchmarks across 12 categories (MMLU, HellaSwag, GSM8K, ...) |
+| **GuideLLM** | `guidellm` | Inference performance: TTFT, ITL, throughput, latency |
+| **LightEval** | `lighteval` | Language model benchmarks: accuracy, exact match |
+| **Garak** | `garak` | Safety and vulnerability scanning (OWASP Top 10) |
+| **MTEB** | `mteb` | Embedding evaluation: STS, retrieval, classification |
+
+## Quick Taste
+
+```bash
+pip install "eval-hub-sdk[cli]"
+
+evalhub eval run \
+  --name my-first-eval \
+  --model-url http://localhost:11434/v1 \
+  --model-name qwen2.5:1.5b \
+  --provider lm_evaluation_harness \
+  --benchmark mmlu \
+  --wait
+```
+
+## Get Started
+
+<CardGrid>
+  <LinkCard title="Installation" href="/getting-started/installation/" description="Install the server and a client" />
+  <LinkCard title="Quick Start" href="/getting-started/quickstart/" description="Run your first evaluation step by step" />
+  <LinkCard title="CLI Reference" href="/guides/cli/" description="Full command reference for the evalhub CLI" />
+  <LinkCard title="Python SDK" href="/reference/sdk-client/" description="Programmatic access with sync and async clients" />
+</CardGrid>
 
 ## License
 
-Apache 2.0 - see [LICENSE](https://github.com/eval-hub/eval-hub/blob/main/LICENSE).
+Apache 2.0 — see [LICENSE](https://github.com/eval-hub/eval-hub/blob/main/LICENSE).

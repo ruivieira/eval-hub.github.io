@@ -2,7 +2,62 @@
 title: "System Overview"
 ---
 
-Technical architecture of EvalHub adapters.
+EvalHub consists of three components that work together to orchestrate LLM evaluations.
+
+| Component | Description | Technology |
+|-----------|-------------|------------|
+| **Server** | REST API, job orchestration, provider management | Go, SQLite / PostgreSQL |
+| **SDK** | Client library, adapter framework, data models | Python 3.11+ |
+| **Contrib** | Community framework adapters | Python containers (UBI9) |
+| **Jobs** | Isolated evaluation execution | Kubernetes Jobs |
+| **Registry** | Immutable artifact storage | OCI registries |
+
+![EvalHub system architecture](/images/diagrams/overview-system-architecture.svg)
+
+## Data Flow
+
+1. **Client submits evaluation** via SDK or REST API
+2. **Server creates Kubernetes Job** with adapter container and sidecar
+3. **ConfigMap mounted** with JobSpec at `/meta/job.json`
+4. **Adapter loads JobSpec**, runs evaluation, reports progress via callbacks
+5. **Sidecar forwards events** to the server via `POST /api/v1/evaluations/jobs/{id}/events`
+6. **Adapter persists artifacts** to OCI registry and logs metrics to MLflow
+7. **Server stores results** in PostgreSQL, returns status to client
+
+## Core Concepts
+
+### Providers
+
+Evaluation providers represent frameworks. Each provider has a set of benchmarks and a container image that runs evaluations.
+
+Built-in providers: `lm_evaluation_harness`, `garak`, `guidellm`, `lighteval`. Custom providers can be registered via YAML configuration or the REST API.
+
+### Benchmarks
+
+Benchmarks are specific evaluation tasks within a provider. Examples: `mmlu` (lm_evaluation_harness), `hellaswag` (lighteval), `sweep` (guidellm).
+
+### Collections
+
+Curated sets of benchmarks with weighted scoring, enabling domain-specific evaluation with a single API call.
+
+```yaml
+collection_id: healthcare_safety_v1
+benchmarks:
+  - benchmark_id: mmlu_medical
+    provider_id: lm_evaluation_harness
+    weight: 2.0
+  - benchmark_id: toxicity
+    provider_id: garak
+    weight: 1.0
+```
+
+### Jobs
+
+Kubernetes Jobs that execute evaluations in isolated pods. Each job has an adapter container (runs the framework) and a sidecar (forwards status events to the server).
+
+### Adapters
+
+Containerised applications implementing the `FrameworkAdapter` interface from the SDK. Each adapter loads a JobSpec, runs the evaluation framework, reports progress via callbacks, persists artifacts to OCI, and returns structured results.
 
 ## Adapter Pattern
 
