@@ -1,73 +1,34 @@
 # EvalHub architecture overview (index)
-direction: down
+direction: right
 
-*.style.shadow: true
-*.style.stroke: "#404040"
-*.style.fill: "#f5f5f5"
 *.style.border-radius: 4
+*.style.font-size: 13
 
 clients: Clients {
-  style.fill: "#ddd"
-  direction: right
-  py: "Python SDK"
-  api: "REST API"
+  sdk: SDK { width: 70; height: 26 }
+  cli: CLI { width: 70; height: 26 }
+  api: API { width: 70; height: 26 }
 }
 
-evalhub: "EvalHub Server" {
-  style.fill: "#e8e8e8"
-  direction: right
-
-  rest: "REST API /api/v1"
-  orch: "Job Orchestrator"
-  prov: "Provider Registry"
-  obs: "Prometheus + OTel"
+evalhub: EvalHub Server {
+  rest: REST API { width: 95; height: 26 }
+  orch: Orchestrator { width: 95; height: 26 }
+  prov: Providers { width: 95; height: 26 }
 
   rest -> orch
   rest -> prov
 }
 
-adapters: "Provider Adapters" {
-  style.fill: "#e8e8e8"
-  direction: right
-  lighteval: LightEval
-  guidellm: GuideLLM
-  mteb: MTEB
-  lmeval: lm-eval-harness
-  garak: Garak
-  custom: "Custom (BYOF)" {
-    style.stroke-dash: 3
-  }
+adapters: Provider Adapters
+
+storage: Storage {
+  db: DB { width: 70; height: 26 }
+  oci: OCI { width: 70; height: 26 }
+  mlflow: MLflow { width: 70; height: 26 }
 }
 
-bottom: "" {
-  style.fill: transparent
-  style.stroke: transparent
-  style.shadow: false
-  direction: right
-
-  storage: Storage {
-    style.fill: "#e8e8e8"
-    style.shadow: true
-    db: "PostgreSQL / SQLite"
-    oci: "OCI Registry"
-  }
-
-  external: "External Services" {
-    style.fill: "#ddd"
-    style.shadow: true
-    model: "Model Endpoints"
-    mlflow: MLflow
-  }
-}
-
-clients -> evalhub.rest: REST { style.border-radius: 8 }
-evalhub.orch -> adapters: "dispatch\n(job spec)" { style.border-radius: 8 }
-adapters -> evalhub.rest: "status\nevents" {
-  style.stroke-dash: 3
-  style.border-radius: 8
-}
-adapters -> bottom.external.model: inference { style.border-radius: 8 }
-adapters -> bottom.external.mlflow: "log metrics" { style.border-radius: 8 }
-adapters -> bottom.storage.oci: "push artifacts" { style.border-radius: 8 }
-evalhub.rest -> bottom.storage.db { style.border-radius: 8 }
-evalhub.orch -> bottom.external.mlflow: "create experiment" { style.border-radius: 8 }
+clients -> evalhub.rest
+evalhub.orch -> adapters
+adapters -> storage.oci
+adapters -> storage.mlflow
+evalhub.rest -> storage.db

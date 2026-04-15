@@ -1,19 +1,18 @@
-# Adapter artifact persistence sequence (development/architecture)
-artifact: "3. Artifact Persistence" {
+# Adapter artifact persistence sequence
+artifact: Artifact Persistence {
   shape: sequence_diagram
   a: Adapter
   c: Callbacks
-  p: "OCIArtifactPersister"
-  r: "OCI Registry"
+  p: OCIArtifactPersister
+  r: OCI Registry
 
-  a -> c: "create_oci_artifact(OCIArtifactSpec)"
-  c -> p: "persist(spec)"
-  p -> p: "Create OCI Layer (olot)"
-  p -> r: "Push Layer (oras)"
-  r -> p: "Digest"
-  p -> p: "Create Manifest with annotations"
-  p -> r: "Push Manifest"
-  r -> p: "Confirmation"
-  p -> c: "OCIArtifactResult (digest, reference)"
-  c -> a: "OCIArtifactResult"
+  a -> c: create_oci_artifact(spec)
+  c -> p: persist(spec)
+  p -> p: Create OCI Layer (olot)
+  p -> r: Push Layer (oras)
+  r -> p: Digest
+  p -> r: Push Manifest
+  r -> p: Confirmation
+  p -> c: OCIArtifactResult
+  c -> a: OCIArtifactResult
 }

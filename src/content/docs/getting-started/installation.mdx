@@ -1,0 +1,175 @@
+---
+title: "Installation"
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Install the EvalHub server and a client to interact with it.
+
+## Prerequisites
+
+- **Python 3.11+**
+- **Kubernetes/OpenShift cluster** (for production deployment)
+- **kubectl** or **oc** CLI configured for your cluster
+
+## Install a Client
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+pip install "eval-hub-sdk[cli]"
+```
+
+Verify:
+
+```bash
+evalhub version
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+```bash
+pip install "eval-hub-sdk[client]"
+```
+
+</TabItem>
+<TabItem label="REST API">
+
+No installation needed — use `curl` or any HTTP client directly against the REST API.
+
+</TabItem>
+</Tabs>
+
+## Deploy the Server
+
+<Tabs>
+<TabItem label="Kubernetes/OpenShift (SQLite)">
+
+Install the TrustyAI Operator and deploy EvalHub with SQLite. No external database needed — suitable for development and testing. Data is lost when the pod restarts.
+
+```bash
+kubectl apply -f https://github.com/trustyai-explainability/trustyai-service-operator/releases/latest/download/trustyai-operator.yaml
+
+kubectl apply -f - <<EOF
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: EvalHub
+metadata:
+  name: evalhub
+  namespace: evalhub
+spec:
+  replicas: 1
+  database:
+    type: sqlite
+  providers:
+    - lm-evaluation-harness
+    - garak
+    - garak-kfp
+    - guidellm
+    - lighteval
+    - ibm-clear
+  collections:
+    - leaderboard-v2
+    - safety-and-fairness-v1
+    - toxicity-and-ethical-principles
+EOF
+```
+
+</TabItem>
+
+<TabItem label="Kubernetes/OpenShift (PostgreSQL)">
+
+Install the TrustyAI Operator and deploy EvalHub with PostgreSQL for durable, persistent storage. Create the credentials Secret first, then the CR.
+
+```bash
+kubectl apply -f https://github.com/trustyai-explainability/trustyai-service-operator/releases/latest/download/trustyai-operator.yaml
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: evalhub-db-credentials
+  namespace: evalhub
+type: Opaque
+stringData:
+  db-url: "postgres://user:password@db-host:5432/evalhub"
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: EvalHub
+metadata:
+  name: evalhub
+  namespace: evalhub
+spec:
+  replicas: 1
+  database:
+    type: postgresql
+    secret: evalhub-db-credentials
+  providers:
+    - lm-evaluation-harness
+    - garak
+    - garak-kfp
+    - guidellm
+    - lighteval
+    - ibm-clear
+  collections:
+    - leaderboard-v2
+    - safety-and-fairness-v1
+    - toxicity-and-ethical-principles
+EOF
+```
+
+See [OpenShift Setup](/deployment/openshift-setup/) for a full description of all `spec` fields.
+
+</TabItem>
+
+<TabItem label="Local Development">
+
+Build and run from source:
+
+```bash
+git clone https://github.com/eval-hub/eval-hub.git
+cd eval-hub
+make build
+./bin/eval-hub
+```
+
+The server starts at `http://localhost:8080` with SQLite in-memory storage.
+
+</TabItem>
+</Tabs>
+
+## Verify the Installation
+
+<Tabs syncKey="interface">
+<TabItem label="CLI">
+
+```bash
+evalhub health
+evalhub providers list
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+```python
+import os
+from evalhub import SyncEvalHubClient
+
+client = SyncEvalHubClient(base_url=os.environ["EVALHUB_URL"])
+print(client.health())
+print(client.providers.list())
+```
+
+</TabItem>
+<TabItem label="REST API">
+
+```bash
+curl -s $EVALHUB_URL/api/v1/health
+curl -s $EVALHUB_URL/api/v1/evaluations/providers | jq .
+```
+
+</TabItem>
+</Tabs>

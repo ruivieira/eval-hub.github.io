@@ -1,19 +1,16 @@
-# Adapter initialisation sequence (development/architecture)
-init: "1. Initialisation" {
+# Adapter initialisation sequence
+init: Initialisation {
   shape: sequence_diagram
   k: Kubernetes
   a: Adapter
-  fs: "File System"
+  fs: File System
   env: Environment
 
-  k -> a: "Start container"
+  k -> a: Start container
   k -> a: "Mount ConfigMap (/meta/job.json)"
   k -> env: "Set JOB_ID, EVALHUB_URL"
-  k -> env: "Set MLFLOW_TRACKING_URI"
-  k -> env: "Set OCI_AUTH_CONFIG_PATH"
-  a -> env: "Initialize AdapterSettings from env"
-  a -> fs: "Read JobSpec from /meta/job.json"
-  fs -> a: "JobSpec (id, provider, benchmark, model, exports)"
-  a -> a: "Parse and validate JobSpec"
-  a -> a: "Create DefaultCallbacks(sidecar_url, registry, mlflow)"
+  a -> env: Load AdapterSettings
+  a -> fs: Read JobSpec
+  fs -> a: "JobSpec (provider, benchmark, model)"
+  a -> a: Create DefaultCallbacks
 }

@@ -1,29 +1,23 @@
 # LightEval adapter architecture
 direction: down
 
-*.style.shadow: true
-*.style.stroke: "#404040"
-*.style.fill: "#f5f5f5"
 *.style.border-radius: 4
 
-evalhub: "EvalHub Server" {
-  style.fill: "#ddd"
+evalhub: EvalHub Server {
   direction: right
-  api: "REST API"
-  orch: "Job Orchestrator"
+  api: REST API
+  orch: Job Orchestrator
 }
 
 k8s: "Kubernetes / OpenShift" {
-  style.fill: "#e8e8e8"
   direction: right
-
   cm: "ConfigMap\n/meta/job.json"
-  pod: "LightEval Job Pod" {
-    adapter: "LightEval Adapter" {
+  pod: LightEval Job Pod {
+    adapter: LightEval Adapter {
       load: "1. Load JobSpec"
-      run: "2. Run LightEval\n(HellaSwag, ARC, MMLU, ...)"
-      parse: "3. Parse (accuracy, acc_norm)"
-      report: "4. Report via callbacks"
+      run: "2. Run LightEval"
+      parse: "3. Parse metrics"
+      report: "4. Report results"
 
       load -> run
       run -> parse
@@ -34,21 +28,19 @@ k8s: "Kubernetes / OpenShift" {
 }
 
 external: External {
-  style.fill: "#ddd"
   direction: right
-  model: "Model Endpoint\nvLLM / TGI / OpenAI"
-  oci: "OCI Registry"
+  model: Model Endpoint
+  oci: OCI Registry
   mlflow: MLflow
 }
 
-evalhub.orch -> k8s.cm: creates { style.border-radius: 8 }
-evalhub.orch -> k8s.pod: "creates Job" { style.border-radius: 8 }
-k8s.cm -> k8s.pod.adapter: mounted { style.border-radius: 8 }
-k8s.pod.adapter.run -> external.model: "evaluation prompts" { style.border-radius: 8 }
-k8s.pod.adapter.report -> k8s.pod.sidecar: callbacks { style.border-radius: 8 }
+evalhub.orch -> k8s.cm: creates
+evalhub.orch -> k8s.pod: creates Job
+k8s.cm -> k8s.pod.adapter: mounted
+k8s.pod.adapter.run -> external.model: evaluation prompts
+k8s.pod.adapter.report -> k8s.pod.sidecar: callbacks
 k8s.pod.sidecar -> evalhub.api: "POST /events" {
   style.stroke-dash: 3
-  style.border-radius: 8
 }
-k8s.pod.adapter -> external.oci: "push artifacts" { style.border-radius: 8 }
-k8s.pod.adapter -> external.mlflow: "log metrics" { style.border-radius: 8 }
+k8s.pod.adapter -> external.oci: push artifacts
+k8s.pod.adapter -> external.mlflow: log metrics
