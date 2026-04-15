@@ -13,41 +13,50 @@ clients: Clients {
   rest: "REST API\ncurl / HTTP"
 }
 
-evalhub: "EvalHub Server" {
+k8s: "Kubernetes / OpenShift" {
   style.fill: "#e8e8e8"
   direction: right
 
-  api: "REST API\n/api/v1"
-  orch: "Job Orchestrator"
-  prov: "Provider Registry"
-  provconfig: "Config Loader\nproviders/*.yaml"
-  coll: "Collection Registry"
-  collconfig: "Config Loader\ncollectionss/*.yaml"
+  odh: "ODH namespace" {
+    evalhub: "EvalHub Server" {
+      style.fill: "#e8e8e8"
+      direction: right
 
-  api -> orch
-  api -> prov
-  provconfig -> prov
-  api -> coll
-  collconfig -> coll
-}
+      api: "REST API\n/api/v1"
+      orch: "Job Orchestrator"
+      prov: "Provider Registry"
+      provconfig: "Config Loader\nproviders/*.yaml"
+      coll: "Collection Registry"
+      collconfig: "Config Loader\ncollectionss/*.yaml"
 
-servicestorage: Service Storage {
-  style.fill: "#e8e8e8"
-  style.shadow: true
-  db: "PostgreSQL / SQLite"
-}
+      api -> orch
+      api -> prov
+      provconfig -> prov
+      api -> coll
+      collconfig -> coll
+    }
 
-runtimes: "Kubernetes / OpenShift" {
-  style.fill: "#e8e8e8"
-  direction: right
-
-  cm: "ConfigMap\n/meta/job.json"
-  pod: "Evaluation Job Pod" {
-    adapter: "Adapter Container\nFrameworkAdapter"
-    sidecar: "Sidecar\nEvent Forwarder"
+    servicestorage: Service Storage {
+      style.fill: "#e8e8e8"
+      style.shadow: true
+      db: "PostgreSQL / SQLite"
+    }
   }
-  local: "Local Runtime" {
-    style.stroke-dash: 3
+
+  user: "User namespace" {
+    runtimes: "Runtimes" {
+      style.fill: "#e8e8e8"
+      direction: right
+
+      cm: "ConfigMap\n/meta/job.json"
+      pod: "Evaluation Job Pod" {
+        adapter: "Adapter Container\nFrameworkAdapter"
+        sidecar: "Sidecar\nEvent Forwarder"
+      }
+      local: "Local Runtime" {
+        style.stroke-dash: 3
+      }
+    }
   }
 }
 
@@ -71,20 +80,20 @@ bottom: "" {
   }
 }
 
-clients -> evalhub.api: REST {style.border-radius: 8}
+clients -> k8s.odh.evalhub.api: REST {style.border-radius: 8}
 
-evalhub.orch -> runtimes.cm: creates {style.border-radius: 8}
-evalhub.orch -> runtimes.pod: "creates Job" {style.border-radius: 8}
-evalhub.orch -> runtimes.local: spawns {style.border-radius: 8; style.stroke-dash: 3}
-evalhub.orch -> bottom.external.mlflow: "create experiment" {style.border-radius: 8}
-evalhub.api -> servicestorage.db: {style.border-radius: 8}
+k8s.odh.evalhub.orch -> k8s.user.runtimes.cm: creates {style.border-radius: 8}
+k8s.odh.evalhub.orch -> k8s.user.runtimes.pod: "creates Job" {style.border-radius: 8}
+k8s.odh.evalhub.orch -> k8s.user.runtimes.local: spawns {style.border-radius: 8; style.stroke-dash: 3}
+k8s.odh.evalhub.orch -> bottom.external.mlflow: "create experiment" {style.border-radius: 8}
+k8s.odh.evalhub.api -> k8s.odh.servicestorage.db: {style.border-radius: 8}
 
-runtimes.cm -> runtimes.pod.adapter: mounted {style.border-radius: 8}
-runtimes.pod.adapter -> runtimes.pod.sidecar: callbacks {style.border-radius: 8}
-runtimes.pod.adapter -> bottom.external.model: inference {style.border-radius: 8}
-runtimes.pod.sidecar -> bottom.external.mlflow: "log metrics" {style.border-radius: 8}
-runtimes.pod.sidecar -> bottom.userstorage.oci: "push artifacts" {style.border-radius: 8}
-runtimes.pod.sidecar -> evalhub.api: "POST /events" {
+k8s.user.runtimes.cm -> k8s.user.runtimes.pod.adapter: mounted {style.border-radius: 8}
+k8s.user.runtimes.pod.adapter -> k8s.user.runtimes.pod.sidecar: callbacks {style.border-radius: 8}
+k8s.user.runtimes.pod.adapter -> bottom.external.model: inference {style.border-radius: 8}
+k8s.user.runtimes.pod.sidecar -> bottom.external.mlflow: "log metrics" {style.border-radius: 8}
+k8s.user.runtimes.pod.sidecar -> bottom.userstorage.oci: "push artifacts" {style.border-radius: 8}
+k8s.user.runtimes.pod.sidecar -> k8s.odh.evalhub.api: "POST /events" {
   style.stroke-dash: 3
   style.border-radius: 8
 }
