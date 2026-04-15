@@ -71,6 +71,12 @@ export default defineConfig({
                 { label: 'Examples', slug: 'adapters/lighteval/examples' },
               ],
             },
+            {
+              label: 'IBM CLEAR',
+              items: [
+                { label: 'Overview', slug: 'adapters/clear' },
+              ],
+            },
           ],
         },
         {
