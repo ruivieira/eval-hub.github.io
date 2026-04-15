@@ -82,8 +82,8 @@ evalhub.api -> servicestorage.db: {style.border-radius: 8}
 runtimes.cm -> runtimes.pod.adapter: mounted {style.border-radius: 8}
 runtimes.pod.adapter -> runtimes.pod.sidecar: callbacks {style.border-radius: 8}
 runtimes.pod.adapter -> bottom.external.model: inference {style.border-radius: 8}
-runtimes.pod.adapter -> bottom.external.mlflow: "log metrics" {style.border-radius: 8}
-runtimes.pod.adapter -> bottom.userstorage.oci: "push artifacts" {style.border-radius: 8}
+runtimes.pod.sidecar -> bottom.external.mlflow: "log metrics" {style.border-radius: 8}
+runtimes.pod.sidecar -> bottom.userstorage.oci: "push artifacts" {style.border-radius: 8}
 runtimes.pod.sidecar -> evalhub.api: "POST /events" {
   style.stroke-dash: 3
   style.border-radius: 8
