@@ -158,7 +158,7 @@ clients.cli -> k8s.odh.evalhub.api: REST {style.border-radius: 8}
 k8s.odh.evalhub.orch -> k8s.user.runtimes.cm: creates {style.border-radius: 8}
 k8s.odh.evalhub.orch -> k8s.user.runtimes.pod: "creates Job" {style.border-radius: 8}
 # k8s.odh.evalhub.orch -> k8s.user.runtimes.local: spawns {style.border-radius: 8; style.stroke-dash: 3}
-k8s.odh.evalhub.orch -> external.mlflow: "create experiment" {style.border-radius: 8}
+k8s.odh.evalhub.api -> external.mlflow: "create experiment" {style.border-radius: 8}
 k8s.odh.evalhub.api -> k8s.odh.servicestorage.db: {style.border-radius: 8}
 
 k8s.user.runtimes.cm -> k8s.user.runtimes.pod.adapter: mounted {style.border-radius: 8}
