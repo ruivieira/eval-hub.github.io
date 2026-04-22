@@ -133,6 +133,12 @@ evalhub eval run \
 # Job submitted: eval-e5f6g7h8
 ```
 
+### Config file vs. inline flags
+
+Do not mix the two styles on the same command. When you pass **`--config`**, the YAML or JSON file is the **complete** job specification for `eval run`. **All** other job-related flags on that same command (for example **`--name`**, **`--model-url`**, **`--provider`**, **`--benchmark`**, **`--experiment`**, **`--metric`**, and **`--description`**) are **not** applied—anything that belongs in the job request must live in the file (see the [quick start](/getting-started/quickstart/) for full examples, including [MLflow tracking](/getting-started/quickstart/#use-mlflow-tracking)).
+
+You can still use **`--wait`**, **`--timeout`**, **`--poll-interval`**, and **`--format`** with **`--config`**, because they only control how the CLI waits for or prints the result, not the job body sent to the server.
+
 ### Non-blocking by default
 
 `eval run` returns as soon as the job is accepted by the server, giving you the job ID to use later:
