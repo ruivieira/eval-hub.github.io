@@ -366,8 +366,8 @@ evalhub eval results eval-a1b2c3d4 --format csv > results.csv
 result = client.jobs.wait_for_completion(job.id, timeout=3600)
 
 # Access results directly
-for r in result.results:
-    print(f"{r.benchmark_id}: {r.overall_score}")
+for r in result.results.benchmarks:
+    print(f"{r.id}: {r.metrics}")
 ```
 
 </TabItem>
@@ -418,7 +418,7 @@ evalhub eval run \
 <TabItem label="Python SDK">
 
 ```python
-from evalhub.models.api import JobExports, OCIExportConfig, OCICoordinates, K8sConnection
+from evalhub.models.api import EvaluationExports, EvaluationExportsOCI, OCICoordinates, OCIConnectionConfig
 
 job = client.jobs.submit(JobSubmissionRequest(
     name="my-eval-job1",
@@ -429,13 +429,13 @@ job = client.jobs.submit(JobSubmissionRequest(
     benchmarks=[
         BenchmarkConfig(id="demo_benchmark", provider_id="demo")
     ],
-    exports=JobExports(
-        oci=OCIExportConfig(
+    exports=EvaluationExports(
+        oci=EvaluationExportsOCI(
             coordinates=OCICoordinates(
                 oci_host="quay.io",
                 oci_repository="myorg/myartifact"
             ),
-            k8s=K8sConnection(connection="my-oci-credentials")
+            k8s=OCIConnectionConfig(connection="my-oci-credentials")
         )
     )
 ))
