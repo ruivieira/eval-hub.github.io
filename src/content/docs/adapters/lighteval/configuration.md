@@ -12,13 +12,13 @@ Detailed configuration documentation is in progress.
 
 ```json
 {
-  "job_id": "job-123",
+  "id": "job-123",
   "benchmark_id": "hellaswag",
   "model": {
     "name": "gpt2",
     "url": "http://localhost:8000/v1"
   },
-  "benchmark_config": {
+  "parameters": {
     "provider": "endpoint",
     "num_few_shot": 0,
     "random_seed": 42,

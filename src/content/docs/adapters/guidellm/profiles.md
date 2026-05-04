@@ -16,7 +16,7 @@ Automatically explore different request rates to find safe operating ranges.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "sweep",
     "max_seconds": 30,
     "detect_saturation": true
@@ -38,7 +38,7 @@ Maximum capacity testing to identify performance limits.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "throughput",
     "max_seconds": 60,
     "max_requests": 1000
@@ -60,7 +60,7 @@ Simulate parallel users with fixed concurrency level.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "concurrent",
     "rate": 10,
     "max_requests": 100
@@ -82,7 +82,7 @@ Fixed requests per second for steady-state testing.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 5,
     "max_seconds": 10,
@@ -105,7 +105,7 @@ Randomised request rates following Poisson distribution.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "poisson",
     "rate": 5,
     "max_seconds": 30
@@ -127,7 +127,7 @@ Sequential requests for baseline measurements.
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "synchronous",
     "max_requests": 50
   }
@@ -171,7 +171,7 @@ Fast test with minimal samples:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 5,
     "max_seconds": 10,
@@ -187,7 +187,7 @@ Realistic production simulation:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "poisson",
     "rate": 50,
     "max_seconds": 300,
@@ -203,7 +203,7 @@ Find maximum throughput:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "profile": "throughput",
     "max_seconds": 60,
     "max_requests": 5000,

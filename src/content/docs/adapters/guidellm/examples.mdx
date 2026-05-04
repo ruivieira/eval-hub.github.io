@@ -12,13 +12,13 @@ Fast validation with minimal samples:
 
 ```json
 {
-  "job_id": "guidellm-quick-001",
+  "id": "guidellm-quick-001",
   "benchmark_id": "performance_quick",
   "model": {
     "url": "http://127.0.0.1:8000/v1",
     "name": "Qwen/Qwen2.5-1.5B-Instruct"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 5,
     "max_seconds": 10,
@@ -33,8 +33,7 @@ Fast validation with minimal samples:
     "framework": "guidellm",
     "model_size": "small",
     "evaluation_type": "performance"
-  },
-  "timeout_seconds": 60
+  }
 }
 ```
 
@@ -49,13 +48,13 @@ Automatically explore request rates:
 
 ```json
 {
-  "job_id": "guidellm-sweep-001",
+  "id": "guidellm-sweep-001",
   "benchmark_id": "performance_sweep",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "Qwen/Qwen2.5-1.5B-Instruct"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "sweep",
     "max_seconds": 30,
     "max_requests": 100,
@@ -67,8 +66,7 @@ Automatically explore request rates:
   "tags": {
     "test_type": "discovery",
     "purpose": "capacity_planning"
-  },
-  "timeout_seconds": 120
+  }
 }
 ```
 
@@ -83,13 +81,13 @@ Steady-state performance measurement:
 
 ```json
 {
-  "job_id": "guidellm-constant-001",
+  "id": "guidellm-constant-001",
   "benchmark_id": "performance_constant",
   "model": {
     "url": "http://production.example.com/v1",
     "name": "llama-2-7b-chat"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 10,
     "max_seconds": 300,
@@ -105,8 +103,7 @@ Steady-state performance measurement:
   "tags": {
     "environment": "production",
     "test_type": "baseline"
-  },
-  "timeout_seconds": 600
+  }
 }
 ```
 
@@ -121,13 +118,13 @@ Maximum capacity testing:
 
 ```json
 {
-  "job_id": "guidellm-throughput-001",
+  "id": "guidellm-throughput-001",
   "benchmark_id": "max_throughput",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "gpt-3.5-turbo"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "throughput",
     "max_seconds": 60,
     "max_requests": 5000,
@@ -139,8 +136,7 @@ Maximum capacity testing:
   "tags": {
     "test_type": "stress",
     "purpose": "capacity_limit"
-  },
-  "timeout_seconds": 180
+  }
 }
 ```
 
@@ -155,13 +151,13 @@ Simulate parallel user load:
 
 ```json
 {
-  "job_id": "guidellm-concurrent-001",
+  "id": "guidellm-concurrent-001",
   "benchmark_id": "concurrent_users",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "llama-2-13b"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "concurrent",
     "rate": 25,
     "max_requests": 500,
@@ -173,8 +169,7 @@ Simulate parallel user load:
   "tags": {
     "test_type": "concurrency",
     "concurrent_users": 25
-  },
-  "timeout_seconds": 300
+  }
 }
 ```
 
@@ -189,13 +184,13 @@ Realistic production traffic pattern:
 
 ```json
 {
-  "job_id": "guidellm-poisson-001",
+  "id": "guidellm-poisson-001",
   "benchmark_id": "poisson_traffic",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "mistral-7b"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "poisson",
     "rate": 15,
     "max_seconds": 180,
@@ -210,8 +205,7 @@ Realistic production traffic pattern:
   "tags": {
     "test_type": "realistic",
     "traffic_pattern": "poisson"
-  },
-  "timeout_seconds": 400
+  }
 }
 ```
 
@@ -226,13 +220,13 @@ Single-user minimum latency:
 
 ```json
 {
-  "job_id": "guidellm-sync-001",
+  "id": "guidellm-sync-001",
   "benchmark_id": "baseline_latency",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "qwen-1.5b"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "synchronous",
     "max_requests": 100,
     "data": "prompt_tokens=256,output_tokens=128"
@@ -241,8 +235,7 @@ Single-user minimum latency:
   "tags": {
     "test_type": "baseline",
     "load": "single_user"
-  },
-  "timeout_seconds": 300
+  }
 }
 ```
 
@@ -272,13 +265,13 @@ ollama run qwen2.5:1.5b
 
 ```json
 {
-  "job_id": "local-test-001",
+  "id": "local-test-001",
   "benchmark_id": "ollama_test",
   "model": {
     "url": "http://localhost:11434/v1",
     "name": "qwen2.5:1.5b"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 5,
     "max_seconds": 10,
@@ -314,13 +307,13 @@ Configuration with error thresholds:
 
 ```json
 {
-  "job_id": "guidellm-resilience-001",
+  "id": "guidellm-resilience-001",
   "benchmark_id": "error_tolerance",
   "model": {
     "url": "http://localhost:8000/v1",
     "name": "test-model"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 10,
     "max_seconds": 60,
@@ -331,8 +324,7 @@ Configuration with error thresholds:
   "experiment_name": "error-tolerance-test",
   "tags": {
     "test_type": "resilience"
-  },
-  "timeout_seconds": 120
+  }
 }
 ```
 

@@ -10,18 +10,17 @@ The GuideLLM adapter uses a standardised `JobSpec` structure:
 
 ```json
 {
-  "job_id": "string",
+  "id": "string",
   "benchmark_id": "string",
   "model": {
     "name": "string",
     "url": "string"
   },
-  "benchmark_config": {
+  "parameters": {
     // GuideLLM-specific configuration
   },
   "experiment_name": "string",
-  "tags": {},
-  "timeout_seconds": 60
+  "tags": {}
 }
 ```
 
@@ -31,7 +30,7 @@ The GuideLLM adapter uses a standardised `JobSpec` structure:
 
 | Parameter | Type | Description | Example |
 |-----------|------|-------------|---------|
-| `job_id` | string | Unique job identifier | `"guidellm-001"` |
+| `id` | string | Unique job identifier | `"guidellm-001"` |
 | `benchmark_id` | string | Benchmark identifier | `"performance_sweep"` |
 | `model.name` | string | Model name | `"Qwen/Qwen2.5-1.5B-Instruct"` |
 | `model.url` | string | OpenAI-compatible API endpoint | `"http://localhost:8000/v1"` |
@@ -42,11 +41,10 @@ The GuideLLM adapter uses a standardised `JobSpec` structure:
 |-----------|------|-------------|---------|
 | `experiment_name` | string | Experiment identifier | `null` |
 | `tags` | object | Free-form metadata tags | `{}` |
-| `timeout_seconds` | integer | Job timeout | `60` |
 
 ## Benchmark Configuration
 
-All configuration is specified in the `benchmark_config` object.
+All configuration is specified in the `parameters` object.
 
 ### Execution Profile
 
@@ -117,7 +115,7 @@ Generate synthetic requests with specified token counts:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "data": "prompt_tokens=50,output_tokens=20"
   }
 }
@@ -131,7 +129,7 @@ Use datasets from HuggingFace:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "data": "hf:abisee/cnn_dailymail",
     "data_args": {"name": "3.0.0"},
     "data_column_mapper": {"text_column": "article"},
@@ -153,7 +151,7 @@ Use local data files:
 
 ```json
 {
-  "benchmark_config": {
+  "parameters": {
     "data": "file:///path/to/prompts.jsonl",
     "data_samples": 500
   }
@@ -229,13 +227,13 @@ The adapter reads runtime settings from environment variables:
 
 ```json
 {
-  "job_id": "guidellm-production-001",
+  "id": "guidellm-production-001",
   "benchmark_id": "performance_sweep",
   "model": {
     "name": "Qwen/Qwen2.5-1.5B-Instruct",
     "url": "http://127.0.0.1:8000/v1"
   },
-  "benchmark_config": {
+  "parameters": {
     "profile": "constant",
     "rate": 5,
     "max_seconds": 60,
@@ -251,7 +249,6 @@ The adapter reads runtime settings from environment variables:
     "framework": "guidellm",
     "model_size": "small",
     "evaluation_type": "performance"
-  },
-  "timeout_seconds": 300
+  }
 }
 ```
