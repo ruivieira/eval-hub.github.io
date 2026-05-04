@@ -364,17 +364,19 @@ The CLI is designed for scripted use. All commands return standard exit codes (0
   run: |
     pip install "eval-hub-sdk[cli]"
 
-    evalhub eval run \
+    JOB_ID=$(evalhub eval run \
       --name "ci-eval-${{ github.sha }}" \
       --model-url "$MODEL_URL" \
       --model-name "$MODEL_NAME" \
       --provider lm_evaluation_harness \
       --benchmark mmlu \
-      --wait
+      --wait \
+      --format json | jq -r '.id')
+    echo "JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
 
 - name: Export results
   run: |
-    evalhub eval results --format json > eval-results.json
+    evalhub eval results "$JOB_ID" --format json > eval-results.json
 
 - name: Upload results
   uses: actions/upload-artifact@v4
