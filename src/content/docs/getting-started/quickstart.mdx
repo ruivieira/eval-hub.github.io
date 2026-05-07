@@ -177,7 +177,7 @@ Run your first evaluation with EvalHub.
 
    ```python
    result = client.jobs.wait_for_completion(job.id, timeout=120)
-   print(f"Status: {result.status}")
+   print(f"Status: {result.state}")
    print(f"Results: {result.results}")
    ```
 
@@ -185,7 +185,7 @@ Run your first evaluation with EvalHub.
 
    ```python
    status = client.jobs.get(job.id)
-   print(f"Status: {status.status}")
+   print(f"Status: {status.state}")
    ```
 
    </TabItem>
