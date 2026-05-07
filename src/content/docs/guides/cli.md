@@ -371,7 +371,7 @@ The CLI is designed for scripted use. All commands return standard exit codes (0
       --provider lm_evaluation_harness \
       --benchmark mmlu \
       --wait \
-      --format json | jq -r '.id')
+      --format json | jq -r '.[0].resource.id')
     echo "JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
 
 - name: Export results
