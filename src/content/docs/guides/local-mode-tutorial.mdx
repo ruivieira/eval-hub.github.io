@@ -1,0 +1,259 @@
+---
+title: "Local Mode Tutorial"
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+End-to-end walkthrough: run a LightEval evaluation locally with EvalHub, MLflow experiment tracking, and OCI artifact storage — no Kubernetes required.
+
+This tutorial is based on the [local-lighteval example](https://github.com/eval-hub/eval-hub/tree/main/examples/local-lighteval) in the EvalHub repository. For background on how local mode works, see the [Local Mode guide](/guides/local-mode/).
+
+## Prerequisites
+
+Install the following tools before starting:
+
+- [uv](https://docs.astral.sh/uv/) — Python package manager
+- [podman](https://podman.io/) (or Docker) — for running the OCI registry
+- [ollama](https://ollama.com/) (or any OpenAI-compatible LLM server) — for serving a local model
+
+## Get the example
+
+Download the example directory:
+
+```bash
+mkdir local-lighteval && cd local-lighteval
+curl -sL https://github.com/eval-hub/eval-hub/archive/refs/heads/main.tar.gz \
+  | tar xz --strip-components=3 eval-hub-main/examples/local-lighteval
+```
+
+## Setup
+
+<Steps>
+
+1. **Download the LightEval adapter**
+
+   Download the adapter driver and its requirements from eval-hub-contrib:
+
+   ```bash
+   curl -o main.py https://raw.githubusercontent.com/eval-hub/eval-hub-contrib/main/adapters/lighteval/main.py
+   curl -o requirements.txt https://raw.githubusercontent.com/eval-hub/eval-hub-contrib/main/adapters/lighteval/requirements.txt
+   ```
+
+2. **Install dependencies**
+
+   Install the project packages and the LightEval adapter requirements:
+
+   ```bash
+   uv sync --extra demo
+   uv pip install -r requirements.txt
+   ```
+
+   This installs eval-hub-server, MLflow, notebook dependencies, and the LightEval adapter runtime.
+
+3. **Start MLflow (optional)**
+
+   Only needed if you want experiment tracking. Skip this step if you just want to run evaluations.
+
+   :::note
+   The first `mlflow server` start may take a few extra seconds while it initialises the database.
+   :::
+
+   Activate the venv and start the MLflow server:
+
+   ```bash
+   source .venv/bin/activate
+
+   mlflow server \
+     --backend-store-uri sqlite:///mlflow.db \
+     --host localhost \
+     --port 5000
+   ```
+
+   Verify from another terminal:
+
+   ```bash
+   curl http://localhost:5000/health
+   ```
+
+   The MLflow UI dashboard is accessible at `http://localhost:5000`.
+
+4. **Start the OCI registry (optional)**
+
+   Only needed if you want to persist evaluation artifacts to an OCI registry. Skip this step if you just want to run evaluations.
+
+   In another terminal, pull the registry image and start it on `localhost:5001`:
+
+   ```bash
+   podman pull docker.io/library/registry:2
+
+   podman run -d -p 5001:5000 \
+       --name eval-hub-oci-registry \
+       -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+       docker.io/library/registry:2
+   ```
+
+5. **Start the LLM server**
+
+   Pull a model:
+
+   ```bash
+   ollama pull llama3.2:3b-instruct-q4_K_M
+   ```
+
+   Verify it's running:
+
+   ```bash
+   curl -s http://localhost:11434/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{
+       "model": "llama3.2:3b-instruct-q4_K_M",
+       "messages": [{"role": "user", "content": "Why is the sky blue?"}],
+       "max_tokens": 100
+     }'
+   ```
+
+6. **Configure eval-hub-server**
+
+   Download the template `config.yaml` from the eval-hub repository:
+
+   ```bash
+   mkdir -p config
+   curl -o config/config.yaml https://raw.githubusercontent.com/eval-hub/eval-hub/main/config/config.yaml
+   ```
+
+   Create the provider configuration at `config/providers/lighteval.yaml`:
+
+   ```bash
+   mkdir -p config/providers
+
+   cat > config/providers/lighteval.yaml << 'EOF'
+   id: lighteval
+   name: LightEval
+   description: LightEval for evaluation framework
+   runtime:
+     local:
+       command: "python main.py"
+       env:
+         - name: OCI_INSECURE
+           value: "true"
+
+   benchmarks:
+     - id: gsm8k
+       name: Grade-school math word problems
+       description: |-
+         Multi-step arithmetic word problems requiring 2-8 reasoning steps
+         (8-shot, 1,319 examples).
+       category: math
+       metrics:
+         - exact_match
+         - acc
+       num_few_shot: 8
+       dataset_size: 1319
+       tags:
+         - math
+         - reasoning
+         - lighteval
+       primary_score:
+         metric: acc
+         lower_is_better: false
+       pass_criteria:
+         threshold: 0.25
+   EOF
+   ```
+
+   See the [Local Mode guide — Provider Configuration](/guides/local-mode/#provider-configuration-for-local-mode) for details on the `runtime.local` section.
+
+7. **Start eval-hub-server**
+
+   In a terminal with the venv activated, start the server:
+
+   ```bash
+   source .venv/bin/activate
+
+   eval-hub-server --local --configdir ./config
+   ```
+
+   If MLflow is running, pass the tracking URI:
+
+   ```bash
+   MLFLOW_TRACKING_URI=http://localhost:5000 \
+     eval-hub-server --local --configdir ./config
+   ```
+
+   Verify from another terminal:
+
+   ```bash
+   curl http://localhost:8080/api/v1/health
+   ```
+
+</Steps>
+
+## Run an evaluation
+
+With all services running, submit a job using the CLI:
+
+```bash
+source .venv/bin/activate
+uv pip install "eval-hub-sdk[cli]"
+evalhub config set base_url http://localhost:8080
+
+evalhub eval run \
+  --name local-lighteval-demo \
+  --model-url http://localhost:11434/v1 \
+  --model-name llama3.2:3b-instruct-q4_K_M \
+  --provider lighteval \
+  --benchmark gsm8k \
+  --param num_examples=10 \
+  --param num_few_shot=0 \
+  --wait
+```
+
+Check results:
+
+```bash
+evalhub eval results <job-id>
+```
+
+### With MLflow experiments and OCI artifact storage
+
+MLflow experiment tracking and OCI artifact export are optional. If you started MLflow and the OCI registry in the setup steps, add the `--experiment` and `--oci-*` flags:
+
+```bash
+evalhub eval run \
+  --name local-lighteval-demo \
+  --model-url http://localhost:11434/v1 \
+  --model-name llama3.2:3b-instruct-q4_K_M \
+  --provider lighteval \
+  --benchmark gsm8k \
+  --param num_examples=10 \
+  --param num_few_shot=0 \
+  --experiment my-local-experiment \
+  --oci-host localhost:5001 \
+  --oci-repository local-eval-results \
+  --wait
+```
+
+```bash
+evalhub eval results <job-id> --format json
+```
+
+### Using the Python SDK
+
+The included [`evalhub-client.ipynb`](https://github.com/eval-hub/eval-hub/blob/main/examples/local-lighteval/evalhub-client.ipynb) notebook demonstrates the full evaluation lifecycle using the [eval-hub-sdk Python client](/reference/sdk-client/) — submitting jobs, polling status, and retrieving results programmatically.
+
+## What's running
+
+After completing setup, you have four services on localhost:
+
+| Service | URL | Purpose |
+|---|---|---|
+| **eval-hub-server** | `http://localhost:8080` | Evaluation orchestration |
+| **MLflow** | `http://localhost:5000` | Experiment tracking dashboard |
+| **OCI registry** | `http://localhost:5001` | Artifact storage |
+| **Ollama** | `http://localhost:11434` | LLM inference |
+
+## Next steps
+
+- Browse the MLflow UI at `http://localhost:5000` to see experiment metrics
+- Read the [Local Mode guide](/guides/local-mode/) for provider configuration details and troubleshooting
+- Try other adapters by adding provider YAML files to `config/providers/`

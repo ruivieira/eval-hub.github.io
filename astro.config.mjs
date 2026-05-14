@@ -61,6 +61,8 @@ export default defineConfig({
             { label: 'CLI', slug: 'guides/cli' },
             { label: 'Model Authentication', slug: 'guides/model-authentication' },
             { label: 'Using Custom Data', slug: 'guides/custom-data' },
+            { label: 'Local Mode', slug: 'guides/local-mode' },
+            { label: 'Local Mode Tutorial', slug: 'guides/local-mode-tutorial' },
           ],
         },
         {
