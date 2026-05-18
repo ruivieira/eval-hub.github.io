@@ -163,6 +163,67 @@ curl -sL https://github.com/eval-hub/eval-hub/archive/refs/heads/main.tar.gz \
 
    See the [Local Mode guide — Provider Configuration](/guides/local-mode/#provider-configuration-for-local-mode) for details on the `runtime.local` section.
 
+   **Alternative: REST API**
+
+   Instead of creating provider YAML files, you can register providers via the REST API after completing Step 7 (starting the server). If you prefer this method, skip ahead to Step 7, start the server, then return here and run:
+
+   ```bash
+   BASE_URL="http://localhost:8080"
+
+   curl -s -X POST "${BASE_URL}/api/v1/evaluations/providers" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "id": "lighteval",
+       "name": "LightEval",
+       "description": "LightEval for evaluation framework",
+       "runtime": {
+         "local": {
+           "command": "python main.py",
+           "env": [
+             {"name": "OCI_INSECURE", "value": "true"}
+           ]
+         }
+       },
+       "benchmarks": [
+         {
+           "id": "gsm8k",
+           "name": "Grade-school math word problems",
+           "description": "Multi-step arithmetic word problems requiring 2-8 reasoning steps (8-shot, 1,319 examples).",
+           "category": "math",
+           "metrics": ["exact_match", "acc"],
+           "num_few_shot": 8,
+           "dataset_size": 1319,
+           "tags": ["math", "reasoning", "lighteval"],
+           "primary_score": {
+             "metric": "acc",
+             "lower_is_better": false
+           },
+           "pass_criteria": {
+             "threshold": 0.25
+           }
+         }
+       ]
+     }'
+   ```
+
+   Verify the provider was created and note the generated UUID:
+
+   ```bash
+   evalhub providers list
+   ```
+
+   Example output (your provider ID will differ):
+
+   ```text
+   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+   ┃ ID                                   ┃ NAME      ┃ DESCRIPTION                        ┃ BENCHMARKS ┃
+   ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+   │ accd31b1-2b69-454e-a7a9-9f6c8ca91ae5 │ LightEval │ LightEval for evaluation framework │ 1          │
+   └──────────────────────────────────────┴───────────┴────────────────────────────────────┴────────────┘
+   ```
+
+   When using the REST API, use the returned UUID as the `--provider` value in `evalhub eval run` (replacing `lighteval` in the examples below).
+
 7. **Start eval-hub-server**
 
    In a terminal with the venv activated, start the server:

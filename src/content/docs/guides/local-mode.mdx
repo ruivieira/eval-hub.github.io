@@ -15,12 +15,8 @@ For a hands-on walkthrough, see the [Local Mode Tutorial](/guides/local-mode-tut
 
 ## Starting the Server in Local Mode
 
-:::note
-`eval-hub-server` is currently published on [TestPyPI](https://test.pypi.org/project/eval-hub-server/) while the project is in preview.
-:::
-
 ```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ eval-hub-server
+pip install eval-hub-server
 eval-hub-server --version
 ```
 
@@ -125,6 +121,10 @@ The job specification is the same structure used in cluster mode (where it is mo
 }
 ```
 
+:::note[OCI registry credentials]
+In local mode, the OCI persister reads credentials from `~/.docker/config.json`. If your OCI registry requires authentication, run [`docker login`](https://docs.docker.com/reference/cli/docker/login/) (or `podman login`) before starting an evaluation. For local registries without authentication, set `OCI_INSECURE=true` in the provider's `runtime.local.env` instead.
+:::
+
 ## Provider Configuration for Local Mode
 
 Each provider must have a `runtime.local` section specifying the adapter command and optional environment variables. The `runtime.local.command` is executed via `sh -c "<command>"`.
@@ -155,6 +155,10 @@ benchmarks:
 ```
 
 A provider configuration can include both `runtime.local` and `runtime.k8s` sections, allowing the same definition to work in both modes.
+
+:::tip[Alternative: REST API]
+YAML files are convenient for quick iterations and edits during local development. Alternatively, you can register providers via the REST API (`POST /api/v1/evaluations/providers`) after the server is running — this mirrors the workflow used in cluster deployments, making it easier to onboard providers consistently across environments. When using the REST API, use the returned provider UUID as the `--provider` value in `evalhub eval run`. See the [Local Mode Tutorial](/guides/local-mode-tutorial/) for a complete example.
+:::
 
 ### Environment variables
 
@@ -206,4 +210,4 @@ The server logs structured JSON to stderr. Look for `local runtime` messages:
 | Job stays in `running` state | Adapter is not reporting back | Check the adapter logs in `jobrun.log`; verify the callback URL is reachable |
 | `provider has no local runtime configured` | Missing `runtime.local` in provider YAML | Add a `runtime.local.command` to the provider configuration |
 | MLflow experiment not created | MLflow not configured | Set `MLFLOW_TRACKING_URI` or `mlflow.tracking_uri` in `config.yaml` |
-| OCI push fails | Registry not reachable or requires auth | Verify the registry is running and set `OCI_INSECURE=true` for local registries |
+| OCI push fails | Registry not reachable or requires auth | Verify the registry is running; run `docker login`/`podman login` for authenticated registries or set `OCI_INSECURE=true` for local ones |
