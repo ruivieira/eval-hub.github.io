@@ -1,0 +1,202 @@
+---
+title: "Disconnected Cluster Evaluation"
+description: "Run lm-evaluation-harness benchmarks on air-gapped clusters by pre-staging datasets and tokenizers in MinIO."
+---
+
+This guide covers running `lm_eval` benchmarks on air-gapped/disconnected clusters where the evaluation pod has no internet access. It builds on [Using Custom Data](/guides/custom-data/), which explains how EvalHub's test-data init container and `test_data_ref` work in general.
+
+## Prerequisites
+
+- **Model endpoint** (`model.url`) is reachable from inside the cluster — no public internet required.
+- **EvalHub job images** (adapter, init container, sidecar) are pullable from your internal registry.
+- **MinIO** is reachable from the job namespace.
+- **No HuggingFace access at runtime** — once offline mode is active, all datasets and the tokenizer must be pre-staged in MinIO. No downloads occur during evaluation.
+
+## How It Works
+
+`lm_eval` normally downloads datasets from HuggingFace at evaluation time. On a disconnected cluster this is not possible, so datasets and the tokenizer must be pre-downloaded on a connected machine and uploaded to MinIO before submitting jobs.
+
+The init container in the evaluation pod syncs the MinIO prefix to `/test_data`. Offline mode is auto-detected: `parameters.tokenizer` must be set to a path under `/test_data` (e.g. `/test_data/tokenizer`), and `/test_data` must exist after the init container completes. Dataset bundles are looked up at the same level — each benchmark's dataset is expected as a sibling directory containing a `dataset_dict.json` file (e.g., `/test_data/allenai--ai2_arc--ARC-Easy/dataset_dict.json` alongside `/test_data/tokenizer/`). When this layout is detected, all HuggingFace downloads are disabled automatically.
+
+## Step 1: Pre-download Datasets
+
+Install the `datasets` library on the connected machine, matching the version used in the adapter image to avoid Arrow compatibility errors:
+
+```bash
+pip install "datasets==3.1.0"
+```
+
+Download the dataset and save it as an Arrow bundle:
+
+```python
+from datasets import load_dataset
+
+# With subset
+dataset = load_dataset("allenai/ai2_arc", "ARC-Easy")
+dataset.save_to_disk("staging/allenai--ai2_arc--ARC-Easy")
+
+# Without subset
+dataset = load_dataset("hellaswag")
+dataset.save_to_disk("staging/hellaswag")
+```
+
+Datasets are saved to `./staging/` using `save_to_disk`. The directory name follows the slug format:
+
+```
+# With subset
+slug = dataset_path.replace("/", "--") + "--" + dataset_name
+
+# Without subset
+slug = dataset_path.replace("/", "--")
+```
+
+Examples:
+
+| Benchmark | Dataset Path | Subset | Slug (directory name) |
+|-----------|-------------|--------|-----------------------|
+| `arc_easy` | `allenai/ai2_arc` | `ARC-Easy` | `allenai--ai2_arc--ARC-Easy` |
+| `hellaswag` | `hellaswag` | - | `hellaswag` |
+| `blimp` | `WillHeld/super_blimp` | - | `WillHeld--super_blimp` |
+
+> The full list of benchmark → dataset mappings is in [`docs/dataset-mapping.md`](https://github.com/opendatahub-io/lm-evaluation-harness/blob/incubation/docs/dataset-mapping.md).
+
+## Step 2: Pre-download Tokenizer
+
+On a connected machine, download the tokenizer files:
+
+```python
+from huggingface_hub import hf_hub_download
+
+repo_id = "meta-llama/Llama-3.1-8B-Instruct"
+out_dir = "./staging/tokenizer"
+
+for filename in ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json"]:
+    hf_hub_download(repo_id=repo_id, filename=filename, local_dir=out_dir)
+```
+
+Files are saved to `./staging/tokenizer/`. In the pod this maps to `/test_data/tokenizer`.
+
+## Step 3: Upload to MinIO
+
+Upload the entire `./staging/` directory to MinIO:
+
+```bash
+mc cp --recursive ./staging/ myminio/mlpipeline/offline/
+```
+
+Each `staging/<slug>` maps to `s3://mlpipeline/offline/<slug>` — and ultimately to `/test_data/<slug>` in the evaluation pod.
+
+After uploading, the MinIO layout should look like:
+
+```
+s3://mlpipeline/offline/
+  allenai--ai2_arc--ARC-Easy/   ← dataset bundle
+  hellaswag/                    ← dataset bundle
+  tokenizer/                    ← tokenizer files
+```
+
+## Step 4: Create the MinIO Credentials Secret
+
+The init container uses a Kubernetes Secret to authenticate with MinIO. Create the Secret in the evaluation job namespace before submitting the job:
+
+```bash
+kubectl create secret generic minio-credentials \
+  --namespace <job-namespace> \
+  --from-literal=AWS_ACCESS_KEY_ID=<minio-access-key> \
+  --from-literal=AWS_SECRET_ACCESS_KEY=<minio-secret-key> \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1 \
+  --from-literal=AWS_S3_ENDPOINT=http://<minio-host>:<port>
+```
+
+The `secret_ref` value in `test_data_ref.s3` must match this Secret name (`minio-credentials` in the example above). Without this Secret the init container fails before the evaluation runs. See [Using Custom Data](/guides/custom-data/) for the full list of required Secret keys.
+
+## Step 5: Submit an Evaluation Job
+
+Set `parameters.tokenizer` to a path under `/test_data` — this is what triggers offline mode. Reference the MinIO prefix in `test_data_ref`:
+
+```bash
+curl -X POST https://<eval-hub-host>/api/v1/evaluations/jobs \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant: <namespace>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "arc_easy evaluation",
+    "model": {
+      "url": "https://my-model.apps.example.com/v1",
+      "name": "meta-llama/Llama-3.2-1B-Instruct"
+    },
+    "benchmarks": [
+      {
+        "id": "arc_easy",
+        "provider_id": "lm_evaluation_harness",
+        "parameters": {
+          "tokenizer": "/test_data/tokenizer"
+        },
+        "test_data_ref": {
+          "s3": {
+            "bucket": "mlpipeline",
+            "key": "offline/",
+            "secret_ref": "minio-credentials"
+          }
+        }
+      }
+    ]
+  }'
+```
+
+The init container syncs the entire `offline/` prefix to `/test_data/`, so all datasets and the tokenizer are available at their expected paths. Once the layout is detected, all offline-related environment variables (`HF_HOME`, `HF_DATASETS_OFFLINE`, `HF_HUB_OFFLINE`) are set automatically — do not set these manually in the job, as that can conflict with the auto-detection logic.
+
+### Multiple benchmarks
+
+EvalHub runs one Kubernetes Job per benchmark. Each benchmark therefore needs its own `test_data_ref`, but they can all point to the same MinIO prefix — upload once to `offline/` and reuse the same ref on every entry:
+
+```json
+{
+  "name": "offline evaluation",
+  "model": {
+    "url": "https://my-model.apps.example.com/v1",
+    "name": "meta-llama/Llama-3.2-1B-Instruct"
+  },
+  "benchmarks": [
+    {
+      "id": "arc_easy",
+      "provider_id": "lm_evaluation_harness",
+      "parameters": { "tokenizer": "/test_data/tokenizer" },
+      "test_data_ref": { "s3": { "bucket": "mlpipeline", "key": "offline/", "secret_ref": "minio-credentials" } }
+    },
+    {
+      "id": "hellaswag",
+      "provider_id": "lm_evaluation_harness",
+      "parameters": { "tokenizer": "/test_data/tokenizer" },
+      "test_data_ref": { "s3": { "bucket": "mlpipeline", "key": "offline/", "secret_ref": "minio-credentials" } }
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+**Init container fails before evaluation starts**
+
+The MinIO credentials Secret is missing or incorrect. Verify it exists in the job namespace and contains `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, and `AWS_S3_ENDPOINT`.
+
+**Evaluation fails with a network error**
+
+The dataset bundle was not found in MinIO or the slug does not match. The slug is case-sensitive — verify it matches exactly what was uploaded.
+
+**Wrong slug format**
+
+Check `docs/dataset-mapping.md` for the correct `dataset_path` and `dataset_name` for your benchmark:
+
+- With subset: `dataset_path.replace("/", "--") + "--" + dataset_name` → `allenai--ai2_arc--ARC-Easy`
+- Without subset (Subset column is `-`): `dataset_path.replace("/", "--")` only → `hellaswag`
+
+Only drop the subset suffix when the Subset column in `docs/dataset-mapping.md` is explicitly `-`. If the benchmark has a subset (e.g. `arc_easy` uses `ARC-Easy`), omitting it will produce the wrong slug and the bundle will not be found.
+
+**Offline mode not triggered**
+
+`parameters.tokenizer` must be set to a path under `/test_data` (e.g. `/test_data/tokenizer`), and `/test_data` must exist after the init container completes.
+
+**Tokenizer not found**
+
+The path in `parameters.tokenizer` must match where the tokenizer was uploaded. If you used the default `./staging/tokenizer/` and the prefix `offline/`, the pod path is `/test_data/tokenizer`.

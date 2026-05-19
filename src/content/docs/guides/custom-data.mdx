@@ -8,6 +8,8 @@ Some benchmarks require external test datasets. EvalHub can load this data from 
 
 This guide gives a minimal, reproducible setup using **MinIO** in Kubernetes.
 
+For **air-gapped clusters** running `lm-evaluation-harness` with pre-staged HuggingFace datasets and tokenizers, see [Disconnected Cluster Evaluation](/guides/disconnected-cluster/).
+
 ## How it works
 
 1. You configure a benchmark with a **test data reference** (`bucket`, `key` prefix, and a Kubernetes Secret name for credentials).
