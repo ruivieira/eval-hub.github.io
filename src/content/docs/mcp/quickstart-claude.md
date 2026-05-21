@@ -12,11 +12,7 @@ Stdio is the simplest setup — Claude Code launches the MCP server as a child p
 
 **1. Install the MCP server**
 
-```bash
-brew install eval-hub/evalhub/evalhub-mcp
-```
-
-Or download from [GitHub Releases](/mcp/installation/#install-the-mcp-server).
+Download the binary, see [Install the MCP server](/mcp/installation/#install-the-mcp-server).
 
 **2. Create a config file**
 
