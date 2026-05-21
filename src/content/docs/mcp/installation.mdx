@@ -1,0 +1,236 @@
+---
+title: "MCP Installation"
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Install the EvalHub MCP server on macOS, Linux, or Windows.
+
+## Prerequisites
+
+- An EvalHub instance (cluster deployment or [local mode](/guides/local-mode/))
+- An authentication token (ServiceAccount token for cluster, or none for local mode)
+
+## Install the MCP server
+
+<Tabs syncKey="method">
+<TabItem label="Homebrew (macOS / Linux)">
+
+```bash
+brew install eval-hub/evalhub/evalhub-mcp
+```
+
+Verify:
+
+```bash
+evalhub-mcp --version
+```
+
+</TabItem>
+<TabItem label="GitHub Releases">
+
+Download the binary for your platform from [GitHub Releases](https://github.com/eval-hub/eval-hub/releases):
+
+| Platform             | Binary                          |
+|----------------------|---------------------------------|
+| macOS (Apple Silicon)| `evalhub-mcp-darwin-arm64`      |
+| macOS (Intel)        | `evalhub-mcp-darwin-amd64`      |
+| Linux (x86_64)      | `evalhub-mcp-linux-amd64`       |
+| Linux (ARM64)        | `evalhub-mcp-linux-arm64`       |
+| Windows (x86_64)    | `evalhub-mcp-windows-amd64.exe` |
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+# Example for macOS Apple Silicon — replace with your platform
+curl -Lo evalhub-mcp https://github.com/eval-hub/eval-hub/releases/latest/download/evalhub-mcp-darwin-arm64
+chmod +x evalhub-mcp
+sudo mv evalhub-mcp /usr/local/bin/
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+# Download the binary
+Invoke-WebRequest -Uri "https://github.com/eval-hub/eval-hub/releases/latest/download/evalhub-mcp-windows-amd64.exe" -OutFile "evalhub-mcp.exe"
+
+# Move to a directory in your PATH
+Move-Item evalhub-mcp.exe "$env:LOCALAPPDATA\Programs\evalhub-mcp.exe"
+```
+
+Add `%LOCALAPPDATA%\Programs` to your system `PATH` if it is not already there.
+
+</TabItem>
+</Tabs>
+
+Verify:
+
+```bash
+evalhub-mcp --version
+```
+
+</TabItem>
+<TabItem label="Python SDK">
+
+If you already use the EvalHub Python SDK or CLI, the MCP server is included:
+
+```bash
+pip install "eval-hub-sdk[mcp]"
+```
+
+Run the MCP server:
+
+```bash
+evalhub mcp
+```
+
+The Python SDK MCP server uses stdio transport only and reads connection settings from `~/.config/evalhub/config.yaml` (managed by `evalhub config set`).
+
+</TabItem>
+<TabItem label="Container Image">
+
+The EvalHub container image includes the MCP server binary. This is used for Kubernetes/OpenShift deployments managed by the TrustyAI Operator.
+
+See the [OpenShift Setup](/deployment/openshift-setup/) guide for deploying with the operator. The operator's `EvalHub` CR supports an optional `mcp` section to deploy the MCP server as a sidecar or standalone pod.
+
+To run the container locally:
+
+```bash
+podman run --rm -p 3001:3001 \
+  -e EVALHUB_BASE_URL=http://host.containers.internal:8080 \
+  -e EVALHUB_TRANSPORT=http \
+  quay.io/trustyai/eval-hub:latest \
+  /app/evalhub-mcp
+```
+
+</TabItem>
+</Tabs>
+
+## Configuration
+
+The MCP server connects to an EvalHub API instance. Configure the connection using a YAML file, environment variables, or CLI flags.
+
+### Configuration file
+
+Create `~/.evalhub/config.yaml`:
+
+```yaml
+base_url: "https://evalhub.apps.my-cluster.example.com"
+token: "sha256~..."
+tenant: "my-team"
+transport: "stdio"
+```
+
+Pass the config file to the server:
+
+```bash
+evalhub-mcp --config ~/.evalhub/config.yaml
+```
+
+### Environment variables
+
+All settings can be set via environment variables:
+
+| Variable                | Description                                  | Default       |
+|------------------------|----------------------------------------------|---------------|
+| `EVALHUB_BASE_URL`     | EvalHub API URL                              | —             |
+| `EVALHUB_TOKEN`        | Authentication token                         | —             |
+| `EVALHUB_TENANT`       | Tenant / namespace                           | —             |
+| `EVALHUB_TRANSPORT`    | Transport mode: `stdio`, `http`, `http-sse`  | `stdio`       |
+| `EVALHUB_HOST`         | HTTP server bind host                        | `localhost`    |
+| `EVALHUB_PORT`         | HTTP server bind port                        | `3001`        |
+| `EVALHUB_INSECURE`     | Skip TLS certificate verification            | `false`       |
+| `EVALHUB_LIST_PAGE_LIMIT` | Default page size for list operations     | `100`         |
+| `EVALHUB_TLS_CERT_FILE`| TLS certificate file (for HTTPS serving)     | —             |
+| `EVALHUB_TLS_KEY_FILE` | TLS private key file (for HTTPS serving)     | —             |
+
+### CLI flags
+
+```bash
+evalhub-mcp --transport http --port 3001 --config ~/.evalhub/config.yaml
+```
+
+| Flag          | Description                              |
+|---------------|------------------------------------------|
+| `--transport` | `stdio`, `http`, or `http-sse`           |
+| `--host`      | HTTP server bind address                 |
+| `--port`      | HTTP server port                         |
+| `--config`    | Path to YAML config file                 |
+| `--insecure`  | Skip TLS verification                   |
+| `--tls-cert`  | TLS certificate for HTTPS serving        |
+| `--tls-key`   | TLS private key for HTTPS serving        |
+| `--version`   | Print version and exit                   |
+
+### Configuration precedence
+
+Settings are resolved in this order (highest priority first):
+
+1. CLI flags
+2. YAML config file
+3. Environment variables
+4. Defaults
+
+### Transport modes
+
+| Mode       | Protocol                     | Use case                              |
+|------------|------------------------------|---------------------------------------|
+| `stdio`    | stdin/stdout JSON-RPC        | Local clients (Claude Code, VS Code)  |
+| `http`     | Streamable HTTP              | Remote clients, web integrations      |
+| `http-sse` | HTTP + Server-Sent Events    | Legacy MCP clients (deprecated)       |
+
+The `http` transport includes a health endpoint at `GET /health` returning `{"status":"ok"}`.
+
+## OpenShift multi-tenant setup
+
+When using EvalHub in a multi-tenant OpenShift deployment, create a dedicated ServiceAccount for your AI agent:
+
+```bash
+oc apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a-agent
+  namespace: team-a
+EOF
+```
+
+Grant it the required permissions:
+
+```bash
+oc apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: evalhub-evaluator
+  namespace: team-a
+rules:
+  - apiGroups: [trustyai.opendatahub.io]
+    resources: [evaluations, collections, providers]
+    verbs: [get, list, create, update, delete]
+  - apiGroups: [mlflow.kubeflow.org]
+    resources: [experiments]
+    verbs: [create, get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: evalhub-evaluator-binding
+  namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: evalhub-evaluator
+subjects:
+  - kind: ServiceAccount
+    name: team-a-agent
+    namespace: team-a
+EOF
+```
+
+Generate a long-lived token for the MCP server:
+
+```bash
+export EVALHUB_TOKEN=$(oc create token team-a-agent -n team-a --duration=8760h)
+```
