@@ -1,0 +1,49 @@
+---
+title: "MCP Server"
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+The EvalHub MCP (Model Context Protocol) server lets AI agents submit evaluations, monitor jobs, and browse benchmarks through a standardized protocol. It connects any MCP-compatible client — Claude Code, VS Code with GitHub Copilot, Cursor, or custom agents — to an EvalHub instance.
+
+## What can the MCP server do?
+
+<CardGrid>
+  <Card title="Submit Evaluations" icon="rocket">
+    Submit model evaluation jobs with benchmarks or pre-defined collections, configure MLflow experiments, and track progress.
+  </Card>
+  <Card title="Browse Catalogs" icon="magnifier">
+    Discover available providers, benchmarks, and collections through MCP resources with filtering and pagination.
+  </Card>
+  <Card title="Monitor Jobs" icon="bars">
+    Poll job status with per-benchmark progress, cancel running jobs, and compare results across runs.
+  </Card>
+  <Card title="Guided Workflows" icon="pen">
+    Use built-in prompts for Evaluation-Driven Development (EDD), step-by-step model evaluation, and run comparison.
+  </Card>
+</CardGrid>
+
+## Distribution methods
+
+The MCP server is available as:
+
+- **Standalone binary** — single file, no dependencies. Download from [GitHub Releases](https://github.com/eval-hub/eval-hub/releases) or install via Homebrew.
+- **Python SDK** — `pip install "eval-hub-sdk[mcp]"` includes the MCP server as a CLI subcommand (`evalhub mcp`).
+- **Container image** — for Kubernetes/OpenShift deployments managed by the TrustyAI Operator.
+
+## Get started
+
+<CardGrid>
+  <LinkCard title="Installation" href="/mcp/installation/" description="Install on macOS, Linux, or Windows" />
+  <LinkCard title="Claude Code Quick Start" href="/mcp/quickstart-claude/" description="Connect to Claude Code in under 5 steps" />
+  <LinkCard title="VS Code Quick Start" href="/mcp/quickstart-vscode/" description="Connect to VS Code / GitHub Copilot" />
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+  <LinkCard title="Tools" href="/mcp/tools/" description="submit_evaluation, cancel_job, get_job_status" />
+  <LinkCard title="Resources" href="/mcp/resources/" description="evalhub:// URI scheme for providers, benchmarks, collections, jobs" />
+  <LinkCard title="Prompts" href="/mcp/prompts/" description="edd_workflow, evaluate_model, compare_runs" />
+  <LinkCard title="Troubleshooting" href="/mcp/troubleshooting/" description="Common issues and how to fix them" />
+</CardGrid>

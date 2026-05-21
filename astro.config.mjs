@@ -110,11 +110,28 @@ export default defineConfig({
           ],
         },
         {
+          label: 'MCP',
+          items: [
+            { label: 'Overview', slug: 'mcp' },
+            { label: 'Installation', slug: 'mcp/installation' },
+            {
+              label: 'Quick Start',
+              items: [
+                { label: 'Claude Code', slug: 'mcp/quickstart-claude' },
+                { label: 'VS Code', slug: 'mcp/quickstart-vscode' },
+              ],
+            },
+            { label: 'Tools', slug: 'mcp/tools' },
+            { label: 'Resources', slug: 'mcp/resources' },
+            { label: 'Prompts', slug: 'mcp/prompts' },
+            { label: 'Troubleshooting', slug: 'mcp/troubleshooting' },
+          ],
+        },
+        {
           label: 'Reference',
           items: [
             { label: 'Server API', slug: 'reference/server-api' },
             { label: 'Python SDK', slug: 'reference/sdk-client' },
-            { label: 'MCP', slug: 'reference/mcp' },
             { label: 'CVE Fixer', slug: 'reference/cve-fixer' },
           ],
         },
