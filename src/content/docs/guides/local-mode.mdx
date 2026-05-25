@@ -16,11 +16,11 @@ For a hands-on walkthrough, see the [Local Mode Tutorial](/guides/local-mode-tut
 ## Starting the Server in Local Mode
 
 ```bash
-pip install eval-hub-server
+uv pip install eval-hub-server
 eval-hub-server --version
 ```
 
-The server requires a `--configdir` pointing to a directory containing a server `config.yaml` and a `providers/` subdirectory with provider YAML files (see the [Local Mode Tutorial](/guides/local-mode-tutorial/) for a step-by-step setup). The `--local` flag disables authentication and enables CORS. The server starts at `http://localhost:8080` with SQLite in-memory storage.
+The server requires a `--configdir` pointing to a directory containing a server `config.yaml` (see the [Local Mode Tutorial](/guides/local-mode-tutorial/) for a step-by-step setup). The `--local` flag disables authentication and enables CORS. The server starts at `http://localhost:8080` with SQLite in-memory storage.
 
 ```bash
 eval-hub-server --local --configdir ./config
@@ -139,7 +139,6 @@ runtime:
     env:
       - name: OCI_INSECURE
         value: "true"
-
 benchmarks:
   - id: my_benchmark
     name: My benchmark
@@ -156,8 +155,8 @@ benchmarks:
 
 A provider configuration can include both `runtime.local` and `runtime.k8s` sections, allowing the same definition to work in both modes.
 
-:::tip[Alternative: REST API]
-YAML files are convenient for quick iterations and edits during local development. Alternatively, you can register providers via the REST API (`POST /api/v1/evaluations/providers`) after the server is running — this mirrors the workflow used in cluster deployments, making it easier to onboard providers consistently across environments. When using the REST API, use the returned provider UUID as the `--provider` value in `evalhub eval run`. See the [Local Mode Tutorial](/guides/local-mode-tutorial/) for a complete example.
+:::tip[Registering providers]
+Providers can be registered using the `evalhub` CLI (`evalhub providers create --file <file>.yaml`) or via the [REST API](/reference/server-api/) (`POST /api/v1/evaluations/providers`) after the server is running. See the [Local Mode Tutorial](/guides/local-mode-tutorial/) for a complete example.
 :::
 
 ### Environment variables
