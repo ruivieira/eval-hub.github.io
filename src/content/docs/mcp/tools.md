@@ -10,44 +10,44 @@ Submit a new model evaluation job.
 
 ### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | Yes | Job name |
-| `description` | string | No | Job description |
-| `tags` | string[] | No | Tags for the job |
-| `model` | object | Yes | Model configuration (see below) |
-| `benchmarks` | object[] | No | List of benchmarks to run (mutually exclusive with `collection`) |
-| `collection` | object | No | Pre-defined benchmark collection (mutually exclusive with `benchmarks`) |
-| `experiment` | object | No | MLflow experiment configuration |
+| Parameter     | Type     | Required | Description                                                             |
+| ------------- | -------- | -------- | ----------------------------------------------------------------------- |
+| `name`        | string   | Yes      | Job name                                                                |
+| `description` | string   | No       | Job description                                                         |
+| `tags`        | string[] | No       | Tags for the job                                                        |
+| `model`       | object   | Yes      | Model configuration (see below)                                         |
+| `benchmarks`  | object[] | No       | List of benchmarks to run (mutually exclusive with `collection`)        |
+| `collection`  | object   | No       | Pre-defined benchmark collection (mutually exclusive with `benchmarks`) |
+| `experiment`  | object   | No       | MLflow experiment configuration                                         |
 
 **`model` object:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `url` | string | Yes | Model inference endpoint URL |
-| `name` | string | Yes | Model display name |
-| `auth_secret` | string | No | Kubernetes Secret reference for model endpoint authentication |
+| Field         | Type   | Required | Description                                                   |
+| ------------- | ------ | -------- | ------------------------------------------------------------- |
+| `url`         | string | Yes      | Model inference endpoint URL                                  |
+| `name`        | string | Yes      | Model display name                                            |
+| `auth_secret` | string | No       | Kubernetes Secret reference for model endpoint authentication |
 
 **`benchmarks` array items:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Benchmark identifier |
-| `provider_id` | string | Yes | Provider that runs this benchmark |
+| Field         | Type   | Required | Description                       |
+| ------------- | ------ | -------- | --------------------------------- |
+| `id`          | string | Yes      | Benchmark identifier              |
+| `provider_id` | string | Yes      | Provider that runs this benchmark |
 
 **`collection` object:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Collection identifier |
+| Field | Type   | Required | Description           |
+| ----- | ------ | -------- | --------------------- |
+| `id`  | string | Yes      | Collection identifier |
 
 **`experiment` object:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | No | MLflow experiment name |
-| `tags` | object | No | Key-value tags for the experiment |
-| `artifact_location` | string | No | MLflow artifacts storage path |
+| Field               | Type   | Required | Description                       |
+| ------------------- | ------ | -------- | --------------------------------- |
+| `name`              | string | No       | MLflow experiment name            |
+| `tags`              | object | No       | Key-value tags for the experiment |
+| `artifact_location` | string | No       | MLflow artifacts storage path     |
 
 ### Example request
 
@@ -91,9 +91,9 @@ Cancel a running or pending evaluation job.
 
 ### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `job_id` | string | Yes | The job identifier to cancel |
+| Parameter | Type   | Required | Description                  |
+| --------- | ------ | -------- | ---------------------------- |
+| `job_id`  | string | Yes      | The job identifier to cancel |
 
 ### Example request
 
@@ -125,9 +125,9 @@ Get the current status of an evaluation job with progress and per-benchmark deta
 
 ### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `job_id` | string | Yes | The job identifier to check |
+| Parameter | Type   | Required | Description                 |
+| --------- | ------ | -------- | --------------------------- |
+| `job_id`  | string | Yes      | The job identifier to check |
 
 ### Example request
 
@@ -166,13 +166,13 @@ Get the current status of an evaluation job with progress and per-benchmark deta
 
 ### Job states
 
-| State | Description |
-|-------|-------------|
-| `pending` | Job is queued and waiting to start |
-| `running` | One or more benchmarks are executing |
-| `completed` | All benchmarks finished successfully |
-| `failed` | One or more benchmarks failed |
-| `cancelled` | Job was cancelled by the user |
+| State              | Description                              |
+| ------------------ | ---------------------------------------- |
+| `pending`          | Job is queued and waiting to start       |
+| `running`          | One or more benchmarks are executing     |
+| `completed`        | All benchmarks finished successfully     |
+| `failed`           | One or more benchmarks failed            |
+| `cancelled`        | Job was cancelled by the user            |
 | `partially_failed` | Some benchmarks completed, others failed |
 
 ### Notes

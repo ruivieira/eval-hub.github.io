@@ -2,6 +2,8 @@
 title: "Prompt Reference"
 ---
 
+## Summary
+
 MCP prompts are structured conversation templates that guide AI agents through common workflows. The EvalHub MCP server provides three prompts.
 
 ## edd_workflow
@@ -10,24 +12,24 @@ Structured guidance for Evaluation-Driven Development (EDD) — a methodology fo
 
 ### Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `application_type` | Yes | The type of application: `rag`, `agent`, `safety`, or `classifier` |
+| Argument           | Required | Description                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------ |
+| `application_type` | Yes      | The type of application: `rag`, `agent`, `safety`, or `classifier` |
 
 ### Application-specific guidance
 
-| Type | Define | Measure | Iterate |
-|------|--------|---------|---------|
-| `rag` | Define retrieval quality and generation accuracy targets | Measure with RAG-specific benchmarks | Iterate on retrieval pipeline and generation prompts |
-| `agent` | Define task completion criteria and tool use accuracy | Measure tool call correctness and task success rate | Iterate on agent prompts and guardrails |
-| `safety` | Define safety requirements and acceptable thresholds | Measure toxicity, bias, and harmful content | Iterate with safety guardrails and content filters |
-| `classifier` | Define per-class accuracy targets | Measure across class imbalances and edge cases | Iterate on classification prompts and examples |
+| Type         | Define                                                   | Measure                                             | Iterate                                              |
+| ------------ | -------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| `rag`        | Define retrieval quality and generation accuracy targets | Measure with RAG-specific benchmarks                | Iterate on retrieval pipeline and generation prompts |
+| `agent`      | Define task completion criteria and tool use accuracy    | Measure tool call correctness and task success rate | Iterate on agent prompts and guardrails              |
+| `safety`     | Define safety requirements and acceptable thresholds     | Measure toxicity, bias, and harmful content         | Iterate with safety guardrails and content filters   |
+| `classifier` | Define per-class accuracy targets                        | Measure across class imbalances and edge cases      | Iterate on classification prompts and examples       |
 
 ### Example usage
 
 Ask your AI agent:
 
-```
+```text
 Use the edd_workflow prompt for a RAG application
 ```
 
@@ -41,10 +43,10 @@ Step-by-step model evaluation workflow that walks through selecting benchmarks, 
 
 ### Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `model_url` | No | URL of the model inference endpoint. If provided, skips the model identification step. |
-| `benchmark_preferences` | No | Benchmark selection preferences (e.g., "reasoning", "safety", "general"). Guides benchmark recommendation. |
+| Argument                | Required | Description                                                                                                |
+| ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `model_url`             | No       | URL of the model inference endpoint. If provided, skips the model identification step.                     |
+| `benchmark_preferences` | No       | Benchmark selection preferences (e.g., "reasoning", "safety", "general"). Guides benchmark recommendation. |
 
 ### Workflow steps
 
@@ -56,13 +58,13 @@ Step-by-step model evaluation workflow that walks through selecting benchmarks, 
 
 ### Example usage
 
-```
+```text
 Use the evaluate_model prompt with model_url https://my-model.example.com/v1
 ```
 
 Or without arguments to be guided through each step:
 
-```
+```text
 Use the evaluate_model prompt to help me evaluate my model
 ```
 
@@ -74,9 +76,9 @@ Guidance for comparing results across multiple evaluation jobs.
 
 ### Arguments
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `job_ids` | No | Comma-separated job IDs to compare. If provided, skips the job selection step. |
+| Argument  | Required | Description                                                                    |
+| --------- | -------- | ------------------------------------------------------------------------------ |
+| `job_ids` | No       | Comma-separated job IDs to compare. If provided, skips the job selection step. |
 
 ### Workflow steps
 
@@ -87,12 +89,12 @@ Guidance for comparing results across multiple evaluation jobs.
 
 ### Example usage
 
-```
+```text
 Use the compare_runs prompt for jobs job-abc123,job-def456
 ```
 
 Or without arguments to browse and select jobs interactively:
 
-```
+```text
 Compare my recent evaluation runs
 ```

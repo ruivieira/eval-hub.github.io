@@ -81,12 +81,14 @@ Common issues when running the EvalHub MCP server and how to resolve them.
 
 - **Wrong command in client config.** Double-check the command and arguments in your client configuration:
 
-  **Claude Code:**
+  **Claude Code**:
+
   ```bash
   claude mcp list
   ```
 
   **VS Code** (`settings.json`):
+
   ```json
   {
     "github.copilot.chat.mcp.servers": {
@@ -148,13 +150,13 @@ Common issues when running the EvalHub MCP server and how to resolve them.
 
 ## Common error messages
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `client not initialized` | MCP server started without a valid EvalHub connection | Check `base_url` in your config; the EvalHub API must be reachable |
-| `must provide either benchmarks or collection, not both` | `submit_evaluation` called with both fields | Use `benchmarks` for individual selection or `collection` for a pre-defined set, not both |
-| `benchmarks list must not be empty` | `submit_evaluation` called with an empty `benchmarks` array | Provide at least one benchmark, or use a `collection` instead |
-| `resource not found` | Invalid ID in a resource URI | Verify the provider/benchmark/collection/job ID exists — use the list resources to discover valid IDs |
-| `invalid status filter` | Unrecognized status value in `evalhub://jobs?status=` | Valid values: `pending`, `running`, `completed`, `failed`, `cancelled`, `partially_failed` |
+| Error                                                    | Cause                                                       | Solution                                                                                              |
+| -------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `client not initialized`                                 | MCP server started without a valid EvalHub connection       | Check `base_url` in your config; the EvalHub API must be reachable                                    |
+| `must provide either benchmarks or collection, not both` | `submit_evaluation` called with both fields                 | Use `benchmarks` for individual selection or `collection` for a pre-defined set, not both             |
+| `benchmarks list must not be empty`                      | `submit_evaluation` called with an empty `benchmarks` array | Provide at least one benchmark, or use a `collection` instead                                         |
+| `resource not found`                                     | Invalid ID in a resource URI                                | Verify the provider/benchmark/collection/job ID exists — use the list resources to discover valid IDs |
+| `invalid status filter`                                  | Unrecognized status value in `evalhub://jobs?status=`       | Valid values: `pending`, `running`, `completed`, `failed`, `cancelled`, `partially_failed`            |
 
 ## Using the MCP Inspector
 
@@ -167,14 +169,17 @@ npx @modelcontextprotocol/inspector
 In the Inspector UI, configure the server:
 
 **For the standalone binary:**
+
 - **Command:** `evalhub-mcp`
 - **Arguments:** `--config /path/to/config.yaml`
 
 **For the Python SDK:**
+
 - **Command:** `evalhub`
 - **Arguments:** `--profile agent mcp`
 
 **For HTTP transport:**
+
 - **URL:** `http://localhost:3001/`
 
 The Inspector lets you browse resources, invoke tools, and test prompts without an AI agent.

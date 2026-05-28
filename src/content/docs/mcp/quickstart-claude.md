@@ -37,7 +37,7 @@ claude mcp add evalhub -- evalhub-mcp --config ~/.evalhub/config.yaml
 
 Start Claude Code and ask:
 
-```
+```text
 List the available evaluation providers
 ```
 
@@ -75,7 +75,7 @@ claude mcp add evalhub -- evalhub --profile agent mcp
 
 Start Claude Code and ask:
 
-```
+```text
 List the available evaluation providers
 ```
 
@@ -109,7 +109,7 @@ For a remote server, replace `localhost` with the server's hostname.
 
 Start Claude Code and ask:
 
-```
+```text
 What benchmarks are available?
 ```
 
@@ -117,18 +117,18 @@ What benchmarks are available?
 
 Once connected, try these with Claude Code:
 
-```
+```text
 Evaluate the model at https://my-model.example.com/v1 using the leaderboard-v2 collection
 ```
 
-```
+```text
 What's the status of job abc123?
 ```
 
-```
+```text
 Cancel job abc123
 ```
 
-```
+```text
 Walk me through an Evaluation-Driven Development workflow for a RAG application
 ```
