@@ -35,6 +35,10 @@ Install the following tools before starting:
    uv pip install "eval-hub-server" "eval-hub-sdk[cli]"
    ```
 
+   :::tip
+   Whenever the tutorial asks you to open or use another terminal, activate the virtual environment first with `source .venv/bin/activate` — even when not explicitly mentioned.
+   :::
+
 3. **Download the LightEval adapter**
 
    Download the adapter driver and its requirements from eval-hub-contrib, then install them:
@@ -120,11 +124,9 @@ Install the following tools before starting:
    curl -o config/config.yaml https://raw.githubusercontent.com/eval-hub/eval-hub/main/config/config.yaml
    ```
 
-   In a terminal with the venv activated, start the server:
+   In another terminal, start the server:
 
    ```bash
-   source .venv/bin/activate
-
    eval-hub-server --local --configdir ./config
    ```
 
@@ -138,6 +140,7 @@ Install the following tools before starting:
    Verify from another terminal:
 
    ```bash
+   evalhub config set base_url http://localhost:8080
    evalhub health
    ```
 
@@ -233,9 +236,6 @@ Install the following tools before starting:
 With all services running, submit a job using the CLI:
 
 ```bash
-source .venv/bin/activate
-evalhub config set base_url http://localhost:8080
-
 evalhub eval run \
   --name my-eval-job \
   --model-url http://localhost:11434/v1 \
