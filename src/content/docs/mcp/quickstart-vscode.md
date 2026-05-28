@@ -57,7 +57,7 @@ Reload the window (Ctrl/Cmd+Shift+P > "Developer: Reload Window") to pick up the
 
 Open GitHub Copilot Chat and ask:
 
-```
+```text
 @workspace List the available evaluation providers using the evalhub MCP server
 ```
 
@@ -88,7 +88,7 @@ evalhub-mcp --transport http --port 3001 --config ~/.evalhub/config.yaml
 
 Open GitHub Copilot Chat and ask:
 
-```
+```text
 @workspace What benchmarks are available?
 ```
 

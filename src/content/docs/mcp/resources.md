@@ -47,10 +47,10 @@ Returns all benchmarks across all providers. Supports pagination.
 
 **Query parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limit` | integer | Maximum items to return (1–2000, default 100) |
-| `offset` | integer | Number of items to skip |
+| Parameter | Type    | Description                                   |
+| --------- | ------- | --------------------------------------------- |
+| `limit`   | integer | Maximum items to return (1–2000, default 100) |
+| `offset`  | integer | Number of items to skip                       |
 
 **Example:** `evalhub://benchmarks?limit=50&offset=0`
 
@@ -119,10 +119,10 @@ Returns all evaluation jobs. Supports pagination.
 
 **Query parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limit` | integer | Maximum items to return (1–2000, default 100) |
-| `offset` | integer | Number of items to skip |
+| Parameter | Type    | Description                                   |
+| --------- | ------- | --------------------------------------------- |
+| `limit`   | integer | Maximum items to return (1–2000, default 100) |
+| `offset`  | integer | Number of items to skip                       |
 
 **Example:** `evalhub://jobs?limit=20&offset=0`
 
@@ -130,13 +130,13 @@ Returns all evaluation jobs. Supports pagination.
 
 **URI:** `evalhub://jobs?status={status}`
 
-| Status | Description |
-|--------|-------------|
-| `pending` | Queued, waiting to start |
-| `running` | Currently executing |
-| `completed` | All benchmarks finished |
-| `failed` | One or more benchmarks failed |
-| `cancelled` | Cancelled by user |
+| Status             | Description                              |
+| ------------------ | ---------------------------------------- |
+| `pending`          | Queued, waiting to start                 |
+| `running`          | Currently executing                      |
+| `completed`        | All benchmarks finished                  |
+| `failed`           | One or more benchmarks failed            |
+| `cancelled`        | Cancelled by user                        |
 | `partially_failed` | Some benchmarks succeeded, others failed |
 
 **Examples:**

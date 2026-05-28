@@ -2,7 +2,11 @@
 title: "MCP Installation"
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+<Badge text="Since 3.5 EA2" variant="note" size="small" />
+
+## Summary
 
 Install the EvalHub MCP server on macOS, Linux, or Windows.
 
@@ -14,18 +18,20 @@ Install the EvalHub MCP server on macOS, Linux, or Windows.
 ## Install the MCP server
 
 <Tabs syncKey="method">
-<TabItem label="Homebrew (macOS / Linux)">
+<TabItem label="Container Image">
 
-**COMING SOON!**
+The EvalHub container image includes the MCP server binary. This is used for Kubernetes/OpenShift deployments managed by the TrustyAI Operator.
 
-```bash
-brew install eval-hub/evalhub/evalhub-mcp
-```
+See the [OpenShift Setup](/deployment/openshift-setup/) guide for deploying with the operator. The operator's `EvalHub` CR supports an optional `mcp` section to deploy the MCP server as a sidecar or standalone pod.
 
-Verify:
+To run the container locally:
 
 ```bash
-evalhub-mcp --version
+podman run --rm -p 3001:3001 \
+  -e EVALHUB_BASE_URL=http://host.containers.internal:8080 \
+  -e EVALHUB_TRANSPORT=http \
+  quay.io/trustyai/eval-hub:latest \
+  /app/evalhub-mcp
 ```
 
 </TabItem>
@@ -74,8 +80,27 @@ evalhub-mcp --version
 ```
 
 </TabItem>
-/*
+<TabItem label="Homebrew (macOS / Linux)">
+
+<Badge text="Since 3.6? (coming soon)" variant="note" size="small" />
+
+```bash
+brew install eval-hub/evalhub/evalhub-mcp
+```
+
+Verify:
+
+```bash
+evalhub-mcp --version
+```
+
+</TabItem>
 <TabItem label="Python SDK">
+
+<Badge text="Since 3.4 (deprecated)" variant="note" size="small" />
+
+```text
+```
 
 If you already use the EvalHub Python SDK or CLI, the MCP server is included:
 
@@ -90,24 +115,6 @@ evalhub mcp
 ```
 
 The Python SDK MCP server uses stdio transport only and reads connection settings from `~/.config/evalhub/config.yaml` (managed by `evalhub config set`).
-
-</TabItem>
-*/
-<TabItem label="Container Image">
-
-The EvalHub container image includes the MCP server binary. This is used for Kubernetes/OpenShift deployments managed by the TrustyAI Operator.
-
-See the [OpenShift Setup](/deployment/openshift-setup/) guide for deploying with the operator. The operator's `EvalHub` CR supports an optional `mcp` section to deploy the MCP server as a sidecar or standalone pod.
-
-To run the container locally:
-
-```bash
-podman run --rm -p 3001:3001 \
-  -e EVALHUB_BASE_URL=http://host.containers.internal:8080 \
-  -e EVALHUB_TRANSPORT=http \
-  quay.io/trustyai/eval-hub:latest \
-  /app/evalhub-mcp
-```
 
 </TabItem>
 </Tabs>
