@@ -2,6 +2,10 @@
 title: "Local Mode"
 ---
 
+import { Badge } from '@astrojs/starlight/components';
+
+<Badge text="Since 3.5 EA2" variant="note" size="small" />
+
 Local mode runs the full EvalHub evaluation pipeline on your workstation without a Kubernetes cluster. Activate it with the `--local` flag. The REST API is identical to cluster mode — the same endpoints, request bodies, and response schemas apply.
 
 Local mode is useful for:
