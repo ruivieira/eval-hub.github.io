@@ -560,12 +560,27 @@ const diagram = {
           }
         },
         {
-          "text": "8. Init Container downloads test data from S3",
+          "text": "EvalHub API returns async response to Client",
+          "mode": "arrow",
+          "from": "evalhub_api",
+          "to": "client",
+          "color": "#3fb950",
+          "num": 8,
+          "fromLeft": true,
+          "toRight": true,
+          "yOff": 10,
+          "inspector": {
+            "title": "Async Response \u2014 Job Accepted",
+            "body": "202 Accepted\n{\n  \"id\": \"<job-id>\",\n  \"state\": \"Pending\",\n  \"model\": \"my-model:latest\",\n  \"framework\": \"lm-eval\",\n  \"tasks\": [\"hellaswag\", \"mmlu\"],\n  \"created_at\": \"2026-06-04T12:00:00Z\"\n}\n\nThe API returns immediately once the\nRuntime has created the K8s Job.\nThe client can poll for status updates\nusing GET /api/v1/evaluations/jobs/<id>."
+          }
+        },
+        {
+          "text": "9. Init Container downloads test data from S3",
           "mode": "arrow",
           "from": "init_container",
           "to": "s3_storage",
           "color": "#58a6ff",
-          "num": 8,
+          "num": 9,
           "fromRight": true,
           "toLeft": true,
           "inspector": {
@@ -574,24 +589,24 @@ const diagram = {
           }
         },
         {
-          "text": "9. Eval Adapter starts evaluation",
+          "text": "10. Eval Adapter starts evaluation",
           "mode": "lightup",
           "target": "eval_adapter",
-          "badge": 9,
+          "badge": 10,
           "color": "#f0883e",
           "inspector": {
             "title": "Evaluation Execution",
             "body": "Eval adapter starts the selected framework:\n\n$ lm-eval --model <endpoint> \\\n         --tasks hellaswag,mmlu \\\n         --data_dir /data/eval/ \\\n         --output_dir /results/\n\nReads config from mounted ConfigMap.\nReads test data from shared volume.\nStreams progress to stdout for logging."
           },
-          "num": 9
+          "num": 10
         },
         {
-          "text": "10. Adapter sends results via Sidecar (localhost:8080)",
+          "text": "11. Adapter sends results via Sidecar (localhost:8080)",
           "mode": "arrow",
           "from": "eval_adapter",
           "to": "sidecar_proxy",
           "color": "#58a6ff",
-          "num": 10,
+          "num": 11,
           "fromBottom": true,
           "toTop": true,
           "inspector": {
@@ -600,12 +615,12 @@ const diagram = {
           }
         },
         {
-          "text": "11. Sidecar reports status callback to EvalHub API",
+          "text": "12. Sidecar reports status callback to EvalHub API",
           "mode": "arrow",
           "from": "sidecar_proxy",
           "to": "evalhub_api",
           "color": "#3fb950",
-          "num": 11,
+          "num": 12,
           "fromLeft": true,
           "toRight": true,
           "yOff": 15,
@@ -615,12 +630,12 @@ const diagram = {
           }
         },
         {
-          "text": "12. Sidecar logs metrics to MLflow",
+          "text": "13. Sidecar logs metrics to MLflow",
           "mode": "arrow",
           "from": "sidecar_proxy",
           "to": "mlflow",
           "color": "#3fb950",
-          "num": 12,
+          "num": 13,
           "fromRight": true,
           "toLeft": true,
           "yOff": 10,
@@ -630,33 +645,18 @@ const diagram = {
           }
         },
         {
-          "text": "13. Sidecar pushes artifacts to OCI Registry",
+          "text": "14. Sidecar pushes artifacts to OCI Registry",
           "mode": "arrow",
           "from": "sidecar_proxy",
           "to": "oci_registry",
           "color": "#3fb950",
-          "num": 13,
+          "num": 14,
           "fromRight": true,
           "toLeft": true,
           "yOff": -5,
           "inspector": {
             "title": "Push Artifacts to OCI",
             "body": "Push evaluation artifacts as OCI objects:\n\n- model_card.json (model card)\n- detailed_results.json (full metrics)\n- eval_report.html (human-readable)\n\nRegistry: registry.example.com\nRepository: eval-results/my-model\nTag: eval-<job-id>\n\nUses OCI Distribution Specification API."
-          }
-        },
-        {
-          "text": "14. EvalHub API returns results to Client",
-          "mode": "arrow",
-          "from": "evalhub_api",
-          "to": "client",
-          "color": "#3fb950",
-          "num": 14,
-          "fromLeft": true,
-          "toRight": true,
-          "yOff": 10,
-          "inspector": {
-            "title": "Final Response",
-            "body": "GET /api/v1/evaluations/jobs/<id>\n\n200 OK\n{\n  \"id\": \"<job-id>\",\n  \"state\": \"Complete\",\n  \"model\": \"my-model:latest\",\n  \"framework\": \"lm-eval\",\n  \"metrics\": {\n    \"hellaswag_acc\": 0.82,\n    \"mmlu_acc\": 0.75\n  },\n  \"mlflow_url\": \"https://mlflow.../run\",\n  \"artifacts_url\": \"oci://registry.../eval\",\n  \"completed_at\": \"2026-06-04T12:34:56Z\"\n}"
           }
         }
       ]
