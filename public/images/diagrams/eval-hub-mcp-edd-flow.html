@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvalHub — MCP EDD Workflow</title>
+<link rel="stylesheet" href="https://noyitz.github.io/flowstory/templates/style.css">
+</head>
+<body>
+<button class="fs-theme-toggle" id="fs-theme">&#9790;</button>
+<div class="fs-brand" id="fs-brand"></div>
+<div class="fs-title" id="fs-title"></div>
+<div class="fs-panel">
+  <div class="fs-flow-bar">
+    <select id="fs-flow-select"></select>
+    <button class="fs-start" id="fs-play">&#9654; Start</button>
+    <button id="fs-speed">1x</button>
+    <button id="fs-loop" style="border-color:#79c0ff;color:#79c0ff">&#8635; Loop</button>
+    <button class="fs-reset" id="fs-reset">Reset</button>
+  </div>
+  <div class="fs-steps" id="fs-steps">
+    <div class="fs-steps-title">Flow Steps <span style="font-weight:400;font-size:11px;color:var(--fs-text-dim)">· click to jump</span></div>
+    <div id="fs-steps-container"></div>
+  </div>
+  <div class="fs-inspector" id="fs-inspector">
+    <div class="fs-inspector-title" id="fs-inspector-title" style="color:var(--fs-accent)">Request</div>
+    <div id="fs-inspector-content"></div>
+  </div>
+</div>
+<div id="fs-highlight-box" style="display:none;position:fixed;z-index:350;border-radius:10px;pointer-events:none"></div>
+<div id="fs-overlay" style="display:none;position:fixed;top:0;left:0;right:380px;bottom:0;z-index:300;background:rgba(0,0,0,0.6)">
+  <div id="fs-overlay-card" style="position:absolute;background:#161b22ee;border:1px solid #30363d;border-radius:14px;max-width:420px;padding:22px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.5)">
+    <button id="fs-overlay-close" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#8b949e;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px">&#10005;</button>
+    <div id="fs-overlay-accent" style="width:4px;height:24px;border-radius:2px;position:absolute;left:0;top:22px"></div>
+    <h2 id="fs-overlay-title" style="margin:0 0 6px;font-size:18px;color:#c9d1d9;font-family:system-ui"></h2>
+    <p id="fs-overlay-desc" style="margin:0 0 14px;font-size:13px;color:#8b949e;line-height:1.5;font-family:system-ui"></p>
+    <div id="fs-overlay-details" style="font-size:12px;font-family:'SF Mono',Menlo,monospace"></div>
+    <button id="fs-overlay-resume" style="margin-top:14px;padding:7px 20px;border:1px solid #3fb950;border-radius:8px;background:transparent;color:#3fb950;font-size:13px;cursor:pointer;font-family:system-ui">&#9654; Resume Flow</button>
+  </div>
+</div>
+<div class="fs-legend" id="fs-legend"></div>
+<canvas id="fs-canvas"></canvas>
+<script type="module">
+import { FlowStory } from 'https://noyitz.github.io/flowstory/src/index.js';
+
+const diagram = {
+  "meta": {
+    "title": "EvalHub — MCP EDD Workflow",
+    "brand": "EvalHub"
+  },
+  "canvas": { "width": 1250, "height": 1050 },
+  "nodes": {
+    "agent": {
+      "x": -20, "y": 340, "w": 110, "h": 50,
+      "label": "AI Agent",
+      "type": "icon",
+      "tooltip": {
+        "title": "AI Agent",
+        "desc": "An AI assistant (e.g., Claude, GPT) that drives the Evaluation-Driven Development workflow via MCP tool calls, resource reads, and prompt invocations.",
+        "details": [
+          { "label": "Role", "value": "EDD Orchestrator" },
+          { "label": "Protocol", "value": "MCP (stdio / HTTP)" },
+          { "label": "Capabilities", "value": "Tool calls, Resource reads, Prompt invocations" }
+        ]
+      }
+    },
+    "mcp": {
+      "x": 230, "y": 310, "w": 200, "h": 100,
+      "label": "MCP Server",
+      "sublabel": "evalhub-mcp :3001",
+      "color": "#d2a8ff",
+      "fontSize": 17,
+      "tooltip": {
+        "title": "EvalHub MCP Server",
+        "desc": "Exposes EvalHub capabilities as AI-consumable MCP tools, resources, and prompts. Runs on port 3001 with bearer token auth.",
+        "details": [
+          { "label": "Tools", "value": "submit_evaluation, get_job_status, cancel_job" },
+          { "label": "Resources", "value": "evalhub://providers, benchmarks, collections, jobs" },
+          { "label": "Prompts", "value": "edd_workflow, evaluate_model, compare_runs" },
+          { "label": "Transport", "value": "stdio or HTTP" },
+          { "label": "Auth", "value": "Bearer token" }
+        ]
+      }
+    },
+    "api": {
+      "x": 500, "y": 310, "w": 190, "h": 100,
+      "label": "EvalHub API",
+      "sublabel": "REST :8080",
+      "color": "#58a6ff",
+      "fontSize": 17,
+      "tooltip": {
+        "title": "EvalHub REST API",
+        "desc": "Core backend API running on port 8080. Manages evaluation jobs, providers, benchmarks, and collections via REST endpoints.",
+        "details": [
+          { "label": "Port", "value": "8080" },
+          { "label": "Endpoints", "value": "POST /jobs, GET /jobs/:id, DELETE /jobs/:id" },
+          { "label": "Storage", "value": "PostgreSQL" },
+          { "label": "Tracking", "value": "MLflow" }
+        ]
+      }
+    },
+    "postgres": {
+      "x": 520, "y": 530, "w": 160, "h": 70,
+      "label": "PostgreSQL",
+      "sublabel": "Job Storage",
+      "color": "#3fb950",
+      "fontSize": 15,
+      "tooltip": {
+        "title": "PostgreSQL Database",
+        "desc": "Persistent storage for evaluation jobs, benchmark definitions, provider configs, and run history.",
+        "details": [
+          { "label": "Tables", "value": "jobs, benchmarks, providers, collections" },
+          { "label": "Role", "value": "Job state persistence" }
+        ]
+      }
+    },
+    "infra": {
+      "x": 750, "y": 280, "w": 220, "h": 170,
+      "label": "Eval Infrastructure",
+      "sublabel": "Kubernetes",
+      "color": "#8b949e",
+      "fontSize": 16,
+      "type": "container",
+      "tooltip": {
+        "title": "Evaluation Infrastructure",
+        "desc": "Kubernetes-based evaluation runtime. Spins up pods to execute benchmark evaluations against model endpoints.",
+        "details": [
+          { "label": "Runtime", "value": "Kubernetes" },
+          { "label": "Execution", "value": "Eval Pods per job" },
+          { "label": "Scaling", "value": "Horizontal pod autoscaling" }
+        ]
+      }
+    },
+    "evalpod": {
+      "x": 780, "y": 340, "w": 160, "h": 70,
+      "label": "Eval Pod",
+      "sublabel": "Benchmark Runner",
+      "color": "#f0883e",
+      "fontSize": 14,
+      "inner": true
+    },
+    "mlflow": {
+      "x": 1020, "y": 330, "w": 160, "h": 70,
+      "label": "MLflow",
+      "sublabel": "Experiment Tracking",
+      "color": "#f0883e",
+      "fontSize": 15,
+      "tooltip": {
+        "title": "MLflow Tracking",
+        "desc": "Records evaluation metrics, parameters, and artifacts for each run. Enables comparison across iterations of the EDD cycle.",
+        "details": [
+          { "label": "Tracks", "value": "Metrics, params, artifacts" },
+          { "label": "Role", "value": "Experiment tracking & comparison" }
+        ]
+      }
+    }
+  },
+  "flows": {
+    "edd_workflow": {
+      "label": "EDD Workflow",
+      "steps": [
+        {
+          "text": "1. Agent invokes edd_workflow prompt",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#d2a8ff", "num": 1,
+          "fromRight": true, "toLeft": true,
+          "inspector": {
+            "title": "MCP Prompt Invocation",
+            "body": "{\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"edd_workflow\",\n    \"arguments\": {\n      \"application_type\": \"RAG\"\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "2. MCP returns EDD guidance (Define-Measure-Iterate)",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 2,
+          "fromLeft": true, "toRight": true, "yOff": 12,
+          "inspector": {
+            "title": "EDD Guidance Response",
+            "body": "{\n  \"messages\": [\n    {\n      \"role\": \"assistant\",\n      \"content\": \"EDD Workflow for RAG:\\n1. DEFINE: Select benchmarks...\\n2. MEASURE: Submit evaluation...\\n3. ITERATE: Analyze & adjust...\\n4. COMPARE: Cross-run analysis\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "text": "3. DEFINE: Agent reads evalhub://providers",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#58a6ff", "num": 3,
+          "fromRight": true, "toLeft": true, "yOff": -8,
+          "inspector": {
+            "title": "MCP Resource Read",
+            "body": "{\n  \"method\": \"resources/read\",\n  \"params\": {\n    \"uri\": \"evalhub://providers\"\n  }\n}"
+          }
+        },
+        {
+          "text": "4. MCP returns provider list",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 4,
+          "fromLeft": true, "toRight": true, "yOff": 4,
+          "inspector": {
+            "title": "Provider List Response",
+            "body": "{\n  \"contents\": [\n    {\n      \"uri\": \"evalhub://providers\",\n      \"text\": \"[\\n  {\\\"name\\\": \\\"openai\\\", \\\"models\\\": [...]},\\n  {\\\"name\\\": \\\"anthropic\\\", \\\"models\\\": [...]},\\n  {\\\"name\\\": \\\"custom\\\", \\\"endpoint\\\": \\\"...\\\"}\\n]\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "text": "5. DEFINE: Agent reads evalhub://benchmarks",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#58a6ff", "num": 5,
+          "fromRight": true, "toLeft": true, "yOff": 18,
+          "inspector": {
+            "title": "MCP Resource Read",
+            "body": "{\n  \"method\": \"resources/read\",\n  \"params\": {\n    \"uri\": \"evalhub://benchmarks?labels=rag,retrieval\"\n  }\n}"
+          }
+        },
+        {
+          "text": "6. MCP returns benchmark list",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 6,
+          "fromLeft": true, "toRight": true, "yOff": 28,
+          "inspector": {
+            "title": "Benchmark List Response",
+            "body": "{\n  \"contents\": [\n    {\n      \"uri\": \"evalhub://benchmarks\",\n      \"text\": \"[\\n  {\\\"name\\\": \\\"rag-faithfulness\\\", ...},\\n  {\\\"name\\\": \\\"rag-relevance\\\", ...},\\n  {\\\"name\\\": \\\"context-recall\\\", ...}\\n]\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "text": "7. MEASURE: Agent calls submit_evaluation tool",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#f0883e", "num": 7,
+          "fromRight": true, "toLeft": true, "yOff": -18,
+          "inspector": {
+            "title": "MCP Tool Call — submit_evaluation",
+            "body": "{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"submit_evaluation\",\n    \"arguments\": {\n      \"model_endpoint\": \"https://api.example.com/v1/chat\",\n      \"benchmarks\": [\"rag-faithfulness\", \"rag-relevance\"],\n      \"experiment\": {\n        \"name\": \"rag-v2-iteration-1\",\n        \"temperature\": 0.3\n      }\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "8. MCP forwards to EvalHub API",
+          "mode": "arrow", "from": "mcp", "to": "api",
+          "color": "#58a6ff", "num": 8,
+          "inspector": {
+            "title": "REST API Call",
+            "body": "POST /api/v1/jobs\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"model_endpoint\": \"https://api.example.com/v1/chat\",\n  \"benchmarks\": [\"rag-faithfulness\", \"rag-relevance\"],\n  \"experiment\": {\n    \"name\": \"rag-v2-iteration-1\",\n    \"temperature\": 0.3\n  }\n}"
+          }
+        },
+        {
+          "text": "9. API stores job in PostgreSQL",
+          "mode": "arrow", "from": "api", "to": "postgres",
+          "color": "#58a6ff", "num": 9,
+          "inspector": {
+            "title": "Database Insert",
+            "body": "INSERT INTO jobs (\n  id, status, model_endpoint,\n  benchmarks, experiment_config,\n  created_at\n) VALUES (\n  'job-abc123', 'PENDING',\n  'https://api.example.com/v1/chat',\n  '{\"rag-faithfulness\",\"rag-relevance\"}',\n  '{...}', NOW()\n);"
+          }
+        },
+        {
+          "text": "10. API triggers evaluation in K8s",
+          "mode": "arrow", "from": "api", "to": "evalpod",
+          "color": "#58a6ff", "num": 10,
+          "inspector": {
+            "title": "K8s Job Creation",
+            "body": "kubectl create job eval-job-abc123\n  --image=evalhub/runner:latest\n  --env JOB_ID=job-abc123\n  --env BENCHMARKS=rag-faithfulness,rag-relevance\n  --env MODEL_ENDPOINT=https://api.example.com/v1/chat"
+          }
+        },
+        {
+          "text": "11. API confirms job created",
+          "mode": "arrow", "from": "api", "to": "mcp",
+          "color": "#3fb950", "num": 11,
+          "fromLeft": true, "toRight": true, "yOff": 10,
+          "inspector": {
+            "title": "API Response",
+            "body": "HTTP 201 Created\n\n{\n  \"id\": \"job-abc123\",\n  \"status\": \"PENDING\",\n  \"benchmarks\": [\"rag-faithfulness\", \"rag-relevance\"],\n  \"created_at\": \"2026-06-04T10:30:00Z\"\n}"
+          }
+        },
+        {
+          "text": "12. MCP returns job ID to Agent",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 12,
+          "fromLeft": true, "toRight": true, "yOff": -6,
+          "inspector": {
+            "title": "Tool Result",
+            "body": "{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\\"job_id\\\": \\\"job-abc123\\\", \\\"status\\\": \\\"PENDING\\\", \\\"message\\\": \\\"Evaluation submitted successfully\\\"}\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "text": "13. Agent polls get_job_status",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#58a6ff", "num": 13,
+          "fromRight": true, "toLeft": true, "yOff": 38,
+          "inspector": {
+            "title": "MCP Tool Call — get_job_status",
+            "body": "{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_job_status\",\n    \"arguments\": {\n      \"job_id\": \"job-abc123\"\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "14. MCP queries EvalHub API",
+          "mode": "arrow", "from": "mcp", "to": "api",
+          "color": "#58a6ff", "num": 14,
+          "yOff": 10,
+          "inspector": {
+            "title": "REST API Call",
+            "body": "GET /api/v1/jobs/job-abc123\nAuthorization: Bearer <token>"
+          }
+        },
+        {
+          "text": "15. API returns job status",
+          "mode": "arrow", "from": "api", "to": "mcp",
+          "color": "#3fb950", "num": 15,
+          "fromLeft": true, "toRight": true, "yOff": 20,
+          "inspector": {
+            "title": "Job Status Response",
+            "body": "{\n  \"id\": \"job-abc123\",\n  \"status\": \"COMPLETED\",\n  \"progress\": 100,\n  \"benchmarks\": {\n    \"rag-faithfulness\": {\n      \"status\": \"COMPLETED\",\n      \"score\": 0.847\n    },\n    \"rag-relevance\": {\n      \"status\": \"COMPLETED\",\n      \"score\": 0.912\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "16. MCP returns progress to Agent",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 16,
+          "fromLeft": true, "toRight": true, "yOff": 42,
+          "inspector": {
+            "title": "Tool Result — Job Status",
+            "body": "{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\\"job_id\\\": \\\"job-abc123\\\", \\\"status\\\": \\\"COMPLETED\\\", \\\"progress\\\": 100, \\\"scores\\\": {\\\"rag-faithfulness\\\": 0.847, \\\"rag-relevance\\\": 0.912}}\"\n    }\n  ]\n}"
+          }
+        },
+        {
+          "text": "17. ITERATE: Agent analyzes results",
+          "mode": "lightup", "target": "agent", "badge": 17,
+          "inspector": {
+            "title": "Agent Analysis — ITERATE Phase",
+            "body": "Agent reasoning:\n- rag-faithfulness: 0.847 (below 0.90 target)\n- rag-relevance: 0.912 (meets target)\n\nDecision: Adjust retrieval context\nwindow and re-evaluate with\nupdated prompt template.\n\nNext: Compare with previous runs."
+          }
+        },
+        {
+          "text": "18. COMPARE: Agent invokes compare_runs prompt",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#d2a8ff", "num": 18,
+          "fromRight": true, "toLeft": true, "yOff": -28,
+          "inspector": {
+            "title": "MCP Prompt Invocation — compare_runs",
+            "body": "{\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"compare_runs\",\n    \"arguments\": {\n      \"job_ids\": [\"job-abc123\", \"job-xyz789\"]\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "19. MCP returns comparison guidance",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#d2a8ff", "num": 19,
+          "fromLeft": true, "toRight": true, "yOff": -18,
+          "inspector": {
+            "title": "Comparison Response",
+            "body": "{\n  \"messages\": [\n    {\n      \"role\": \"assistant\",\n      \"content\": \"Run Comparison:\\n\\njob-abc123 (iteration-1):\\n  faithfulness: 0.847\\n  relevance: 0.912\\n\\njob-xyz789 (baseline):\\n  faithfulness: 0.792\\n  relevance: 0.881\\n\\nDelta: +6.9% faithfulness, +3.5% relevance\\nRecommendation: Continue iterating on retrieval context.\"\n    }\n  ]\n}"
+          }
+        }
+      ]
+    },
+    "submit_monitor": {
+      "label": "Submit & Monitor",
+      "steps": [
+        {
+          "text": "1. Agent calls submit_evaluation via MCP",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#58a6ff", "num": 1,
+          "fromRight": true, "toLeft": true,
+          "inspector": {
+            "title": "MCP Tool Call — submit_evaluation",
+            "body": "{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"submit_evaluation\",\n    \"arguments\": {\n      \"model_endpoint\": \"https://api.example.com/v1/chat\",\n      \"collection\": \"safety-suite\",\n      \"experiment\": {\n        \"name\": \"safety-check-v3\"\n      }\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "2. MCP forwards to EvalHub API",
+          "mode": "arrow", "from": "mcp", "to": "api",
+          "color": "#58a6ff", "num": 2,
+          "inspector": {
+            "title": "REST API Forward",
+            "body": "POST /api/v1/jobs\nAuthorization: Bearer <token>\n\n{\n  \"model_endpoint\": \"https://api.example.com/v1/chat\",\n  \"collection\": \"safety-suite\",\n  \"experiment\": { \"name\": \"safety-check-v3\" }\n}"
+          }
+        },
+        {
+          "text": "3. API creates job",
+          "mode": "lightup", "target": "api", "badge": 3,
+          "inspector": {
+            "title": "Job Creation",
+            "body": "EvalHub API processes request:\n- Validates model endpoint\n- Resolves collection to benchmarks\n- Creates job record in PostgreSQL\n- Returns job ID: job-def456\n- Status: PENDING"
+          }
+        },
+        {
+          "text": "4. Job runs in Eval Infrastructure",
+          "mode": "arrow", "from": "api", "to": "evalpod",
+          "color": "#58a6ff", "num": 4,
+          "inspector": {
+            "title": "Eval Pod Execution",
+            "body": "K8s Job: eval-job-def456\nImage: evalhub/runner:latest\n\nRunning benchmarks:\n- toxicity-detection\n- bias-evaluation\n- jailbreak-resistance\n- content-safety\n\nProgress: 0% -> 25% -> 50% -> 75% -> 100%"
+          }
+        },
+        {
+          "text": "5. Results logged to MLflow",
+          "mode": "arrow", "from": "evalpod", "to": "mlflow",
+          "color": "#3fb950", "num": 5,
+          "inspector": {
+            "title": "MLflow Logging",
+            "body": "Experiment: safety-check-v3\nRun ID: run-789xyz\n\nMetrics logged:\n  toxicity_score: 0.023\n  bias_score: 0.045\n  jailbreak_resistance: 0.967\n  content_safety: 0.991\n\nArtifacts: detailed_report.json"
+          }
+        },
+        {
+          "text": "6. Agent polls get_job_status",
+          "mode": "arrow", "from": "agent", "to": "mcp",
+          "color": "#58a6ff", "num": 6,
+          "fromRight": true, "toLeft": true, "yOff": 15,
+          "inspector": {
+            "title": "MCP Tool Call — get_job_status",
+            "body": "{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_job_status\",\n    \"arguments\": {\n      \"job_id\": \"job-def456\"\n    }\n  }\n}"
+          }
+        },
+        {
+          "text": "7. Status returned via MCP Server",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 7,
+          "fromLeft": true, "toRight": true, "yOff": 5,
+          "inspector": {
+            "title": "Status Relay",
+            "body": "MCP Server queries:\n  GET /api/v1/jobs/job-def456\n\nRelays status to agent:\n  status: RUNNING\n  progress: 75%\n  completed: 3/4 benchmarks"
+          }
+        },
+        {
+          "text": "8. Final results returned to Agent",
+          "mode": "arrow", "from": "mcp", "to": "agent",
+          "color": "#3fb950", "num": 8,
+          "fromLeft": true, "toRight": true, "yOff": 25,
+          "inspector": {
+            "title": "Final Results",
+            "body": "{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\\"job_id\\\": \\\"job-def456\\\", \\\"status\\\": \\\"COMPLETED\\\", \\\"progress\\\": 100, \\\"scores\\\": {\\\"toxicity\\\": 0.023, \\\"bias\\\": 0.045, \\\"jailbreak_resistance\\\": 0.967, \\\"content_safety\\\": 0.991}}\"\n    }\n  ]\n}"
+          }
+        }
+      ]
+    }
+  },
+  "legend": [
+    { "label": "MCP Tool Call", "color": "#58a6ff" },
+    { "label": "Response", "color": "#3fb950" },
+    { "label": "Evaluation", "color": "#f0883e" },
+    { "label": "MCP Prompt", "color": "#d2a8ff" }
+  ],
+  "flowOrder": ["edd_workflow", "submit_monitor"],
+  "defaultFlow": "edd_workflow"
+};
+
+const viz = new FlowStory(document.getElementById('fs-canvas'), {
+  stepsContainer: document.getElementById('fs-steps-container'),
+  inspectorTitle: document.getElementById('fs-inspector-title'),
+  inspectorContent: document.getElementById('fs-inspector-content'),
+  overlay: document.getElementById('fs-overlay'),
+  overlayCard: document.getElementById('fs-overlay-card'),
+  overlayTitle: document.getElementById('fs-overlay-title'),
+  overlayDesc: document.getElementById('fs-overlay-desc'),
+  overlayDetails: document.getElementById('fs-overlay-details'),
+  overlayAccent: document.getElementById('fs-overlay-accent'),
+  overlayClose: document.getElementById('fs-overlay-close'),
+  overlayResume: document.getElementById('fs-overlay-resume'),
+  highlightBox: document.getElementById('fs-highlight-box'),
+  brand: document.getElementById('fs-brand'),
+  title: document.getElementById('fs-title'),
+  legend: document.getElementById('fs-legend'),
+  flowSelect: document.getElementById('fs-flow-select'),
+  playBtn: document.getElementById('fs-play'),
+  speedBtn: document.getElementById('fs-speed'),
+  loopBtn: document.getElementById('fs-loop'),
+  resetBtn: document.getElementById('fs-reset'),
+  themeBtn: document.getElementById('fs-theme'),
+});
+window.__flowstory = viz;
+await viz.load(diagram);
+viz.state.loopMode = true;
+viz.play();
+</script>
+</body>
+</html>
