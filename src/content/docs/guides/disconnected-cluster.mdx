@@ -26,29 +26,32 @@ Install the `datasets` library on the connected machine, matching the version us
 pip install "datasets==3.1.0"
 ```
 
-Download the dataset and save it as an Arrow bundle:
+Download the dataset and save it as an Arrow bundle. The directory name must follow the slug format used by the offline loader:
 
 ```python
-from datasets import load_dataset
+from datasets import load_dataset, get_dataset_config_names
 
-# With subset
+# Single subset  (e.g. arc_easy)
 dataset = load_dataset("allenai/ai2_arc", "ARC-Easy")
 dataset.save_to_disk("staging/allenai--ai2_arc--ARC-Easy")
+#                              ^^^ slug: dataset_path.replace("/","--") + "--" + subset
 
-# Without subset
+# No subset  (e.g. hellaswag)
 dataset = load_dataset("hellaswag")
 dataset.save_to_disk("staging/hellaswag")
+#                              ^^^ slug: dataset_path.replace("/","--")
+
+# Multiple subsets  (e.g. blimp has 67 subsets — download all at once)
+for subset in get_dataset_config_names("blimp"):
+    load_dataset("blimp", subset).save_to_disk(f"staging/blimp--{subset}")
 ```
 
-Datasets are saved to `./staging/` using `save_to_disk`. The directory name follows the slug format:
+The slug rule in one line:
 
-```
-# With subset
-slug = dataset_path.replace("/", "--") + "--" + dataset_name
-
-# Without subset
-slug = dataset_path.replace("/", "--")
-```
+| Has subset? | Slug formula | Example |
+|-------------|-------------|---------|
+| Yes | `dataset_path.replace("/","--") + "--" + subset` | `allenai--ai2_arc--ARC-Easy` |
+| No | `dataset_path.replace("/","--")` | `hellaswag` |
 
 Examples:
 
@@ -56,7 +59,9 @@ Examples:
 |-----------|-------------|--------|-----------------------|
 | `arc_easy` | `allenai/ai2_arc` | `ARC-Easy` | `allenai--ai2_arc--ARC-Easy` |
 | `hellaswag` | `hellaswag` | - | `hellaswag` |
-| `blimp` | `WillHeld/super_blimp` | - | `WillHeld--super_blimp` |
+| `blimp` | `blimp` | all subsets (67) | `blimp--<subset>` per subtask |
+
+> `blimp` runs as 67 separate sub-tasks, each backed by a different subset of the `blimp` HuggingFace dataset. Use the multi-subset snippet above (`get_dataset_config_names`) to download them all in one go.
 
 > The full list of benchmark → dataset mappings is in [`docs/dataset-mapping.md`](https://github.com/opendatahub-io/lm-evaluation-harness/blob/incubation/docs/dataset-mapping.md).
 
@@ -64,11 +69,17 @@ Examples:
 
 On a connected machine, download the tokenizer files:
 
+```bash
+pip install huggingface_hub
+```
+
 ```python
+import os
 from huggingface_hub import hf_hub_download
 
 repo_id = "meta-llama/Llama-3.1-8B-Instruct"
 out_dir = "./staging/tokenizer"
+os.makedirs(out_dir, exist_ok=True)
 
 for filename in ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json"]:
     hf_hub_download(repo_id=repo_id, filename=filename, local_dir=out_dir)
@@ -76,12 +87,23 @@ for filename in ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.
 
 Files are saved to `./staging/tokenizer/`. In the pod this maps to `/test_data/tokenizer`.
 
+> Some models use a different tokenizer format and may need additional files — for example `tokenizer.model` (SentencePiece) or `vocab.json` + `merges.txt` (BPE). Adjust the file list to match your model's repository.
+
 ## Step 3: Upload to MinIO
 
-Upload the entire `./staging/` directory to MinIO:
+Port-forward MinIO and upload the entire `./staging/` directory using the AWS CLI:
 
 ```bash
-mc cp --recursive ./staging/ myminio/mlpipeline/offline/
+# Export MinIO credentials
+export AWS_ACCESS_KEY_ID=<minio-access-key>
+export AWS_SECRET_ACCESS_KEY=<minio-secret-key>
+export AWS_DEFAULT_REGION=us-east-1
+
+# Port-forward MinIO (replace namespace and pod name as needed)
+kubectl port-forward -n minio pod/<minio-pod-name> 9000:9000 &
+
+# Upload staging/ to the offline prefix
+aws --endpoint-url http://127.0.0.1:9000 s3 cp ./staging/ s3://mlpipeline/offline/ --recursive
 ```
 
 Each `staging/<slug>` maps to `s3://mlpipeline/offline/<slug>` — and ultimately to `/test_data/<slug>` in the evaluation pod.
@@ -92,6 +114,7 @@ After uploading, the MinIO layout should look like:
 s3://mlpipeline/offline/
   allenai--ai2_arc--ARC-Easy/   ← dataset bundle
   hellaswag/                    ← dataset bundle
+  blimp--adjunct_island/        ← one bundle per blimp subtask
   tokenizer/                    ← tokenizer files
 ```
 
@@ -144,7 +167,7 @@ curl -X POST https://<eval-hub-host>/api/v1/evaluations/jobs \
   }'
 ```
 
-The init container syncs the entire `offline/` prefix to `/test_data/`, so all datasets and the tokenizer are available at their expected paths. Once the layout is detected, all offline-related environment variables (`HF_HOME`, `HF_DATASETS_OFFLINE`, `HF_HUB_OFFLINE`) are set automatically — do not set these manually in the job, as that can conflict with the auto-detection logic.
+The init container syncs the entire `offline/` prefix to `/test_data/`, so all datasets and the tokenizer are available at their expected paths. Once the layout is detected, all offline-related environment variables (`HF_HOME`, `HF_DATASETS_OFFLINE`, `HF_HUB_OFFLINE`) are set automatically.
 
 ### Multiple benchmarks
 
@@ -186,7 +209,7 @@ The dataset bundle was not found in MinIO or the slug does not match. The slug i
 
 **Wrong slug format**
 
-Check `docs/dataset-mapping.md` for the correct `dataset_path` and `dataset_name` for your benchmark:
+Check [`docs/dataset-mapping.md`](https://github.com/opendatahub-io/lm-evaluation-harness/blob/incubation/docs/dataset-mapping.md) for the correct `dataset_path` and `dataset_name` for your benchmark:
 
 - With subset: `dataset_path.replace("/", "--") + "--" + dataset_name` → `allenai--ai2_arc--ARC-Easy`
 - Without subset (Subset column is `-`): `dataset_path.replace("/", "--")` only → `hellaswag`
