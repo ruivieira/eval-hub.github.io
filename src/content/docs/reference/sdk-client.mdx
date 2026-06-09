@@ -11,8 +11,14 @@ The EvalHub Python SDK provides synchronous and asynchronous clients for the Eva
 ```bash
 pip install eval-hub-sdk[client]    # Client only
 pip install eval-hub-sdk[adapter]   # Adapter SDK (includes mlflow, oras, olot)
-pip install eval-hub-sdk[all]       # Everything
+pip install eval-hub-sdk[server]    # Includes eval-hub-server binary (~20 MB)
+pip install eval-hub-sdk[all]       # Everything (excludes server)
 ```
+
+:::note
+The `[server]` extra installs the `eval-hub-server` binary for local/embedded use.
+It is deliberately excluded from `[all]` due to its size (~20 MB).
+:::
 
 ## Quick Start
 

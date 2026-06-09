@@ -20,7 +20,9 @@ For a hands-on walkthrough, see the [Local Mode Tutorial](/guides/local-mode-tut
 ## Starting the Server in Local Mode
 
 ```bash
-uv pip install eval-hub-server
+pip install eval-hub-server          # Standalone
+# or
+pip install eval-hub-sdk[server]     # Via the SDK extra
 eval-hub-server --version
 ```
 
