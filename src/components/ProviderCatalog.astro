@@ -1,0 +1,188 @@
+---
+import type { CatalogProvider } from '../types/configmap';
+import ProviderCard from './ProviderCard.astro';
+import ProviderDetail from './ProviderDetail.astro';
+import catalog from '../generated/providers-catalog.json';
+
+const { providers, fetchedAt, source } = catalog;
+const typedProviders = providers as CatalogProvider[];
+
+const fetchedDate = new Date(fetchedAt).toLocaleString(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+---
+
+<div
+  class="provider-catalog"
+  id="provider-catalog"
+  data-provider-ids={JSON.stringify(typedProviders.map((p) => p.id))}
+>
+  <div class="catalog-toolbar">
+    <label>
+      Search
+      <input type="search" id="catalog-search" placeholder="Name, id, description…" autocomplete="off" />
+    </label>
+    <button type="button" id="catalog-clear">Clear filters</button>
+  </div>
+
+  <p class="catalog-status" id="catalog-status">
+    Showing {typedProviders.length} of {typedProviders.length} providers
+  </p>
+
+  <div class="catalog-layout">
+    <div class="catalog-cards" id="catalog-cards">
+      {typedProviders.map((provider) => (
+        <ProviderCard provider={provider} />
+      ))}
+    </div>
+
+    <aside class="catalog-detail" id="catalog-detail" aria-live="polite">
+      <p class="catalog-detail-empty" id="catalog-detail-empty">
+        Select a provider to view details and download configuration.
+      </p>
+      {typedProviders.map((provider) => (
+        <ProviderDetail provider={provider} />
+      ))}
+    </aside>
+  </div>
+
+  <footer class="catalog-footer">
+    Catalog synced from{' '}
+    <a href={`https://github.com/${source.repo}/tree/${source.ref}`} target="_blank" rel="noopener noreferrer">
+      {source.repo}@{source.ref}
+    </a>{' '}
+    at {fetchedDate}.
+  </footer>
+</div>
+
+<script>
+  import { toK8sSlug, buildConfigMapYaml } from '../lib/configmap';
+
+  function downloadText(filename: string, content: string): void {
+    const blob = new Blob([content], { type: 'text/yaml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function initCatalog(): void {
+    const root = document.getElementById('provider-catalog');
+    if (!root) return;
+
+    const providerIds: string[] = JSON.parse(root.dataset.providerIds ?? '[]');
+    const totalCount = providerIds.length;
+
+    const searchInput = document.getElementById('catalog-search') as HTMLInputElement | null;
+    const clearBtn = document.getElementById('catalog-clear');
+    const statusEl = document.getElementById('catalog-status');
+    const cardsEl = document.getElementById('catalog-cards');
+    const detailEl = document.getElementById('catalog-detail');
+    const emptyEl = document.getElementById('catalog-detail-empty');
+
+    let selectedId: string | null = null;
+
+    function applyFilters(): void {
+      const query = (searchInput?.value ?? '').trim().toLowerCase();
+      let visible = 0;
+
+      cardsEl?.querySelectorAll('.provider-card').forEach((card) => {
+        if (!query) {
+          card.classList.remove('is-hidden');
+          visible += 1;
+          return;
+        }
+        const text = (card.textContent ?? '').toLowerCase();
+        const show = text.includes(query);
+        card.classList.toggle('is-hidden', !show);
+        if (show) visible += 1;
+      });
+
+      if (statusEl) {
+        statusEl.textContent = `Showing ${visible} of ${totalCount} providers`;
+      }
+    }
+
+    function selectProvider(id: string): void {
+      selectedId = id;
+
+      cardsEl?.querySelectorAll('.provider-card').forEach((card) => {
+        const isSelected = card.getAttribute('data-provider-id') === id;
+        card.classList.toggle('is-selected', isSelected);
+        card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      });
+
+      if (emptyEl) emptyEl.hidden = true;
+
+      detailEl?.querySelectorAll<HTMLElement>('.provider-detail').forEach((panel) => {
+        panel.hidden = panel.dataset.detailId !== id;
+      });
+    }
+
+    function initDetailPanel(panel: HTMLElement): void {
+      const providerId = panel.dataset.detailId;
+      const providerYaml = panel.dataset.providerYaml ?? '';
+      if (!providerId) return;
+
+      const form = panel.querySelector<HTMLFormElement>('[data-configmap-form]');
+      const previewEl = panel.querySelector<HTMLPreElement>('[data-configmap-preview]');
+      const downloadBtn = panel.querySelector<HTMLButtonElement>('[data-download-configmap]');
+
+      function getConfigMapOptions() {
+        const fd = form ? new FormData(form) : null;
+        const slug = toK8sSlug(providerId);
+        return {
+          providerId,
+          providerYaml,
+          namespace: String(fd?.get('namespace') ?? 'opendatahub'),
+          name: String(fd?.get('name') ?? `evalhub-provider-${slug}`),
+          providerType: 'system',
+          providerName: String(fd?.get('providerName') ?? slug),
+        };
+      }
+
+      function updatePreview(): void {
+        if (previewEl) {
+          previewEl.textContent = buildConfigMapYaml(getConfigMapOptions());
+        }
+      }
+
+      form?.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('input', updatePreview);
+      });
+
+      downloadBtn?.addEventListener('click', () => {
+        const opts = getConfigMapOptions();
+        downloadText(`${opts.name}.yaml`, buildConfigMapYaml(opts));
+      });
+    }
+
+    // Wire up each pre-rendered detail panel
+    detailEl?.querySelectorAll<HTMLElement>('.provider-detail').forEach(initDetailPanel);
+
+    cardsEl?.querySelectorAll('.provider-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-provider-id');
+        if (id) selectProvider(id);
+      });
+    });
+
+    searchInput?.addEventListener('input', applyFilters);
+
+    clearBtn?.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      applyFilters();
+    });
+
+    applyFilters();
+
+    if (providerIds.length === 1) {
+      selectProvider(providerIds[0]);
+    }
+  }
+
+  initCatalog();
+</script>

@@ -4,6 +4,9 @@
   "private": true,
   "description": "Documentation site for EvalHub.",
   "scripts": {
+    "fetch-providers": "node scripts/fetch-contrib-providers.mjs",
+    "prebuild": "npm run fetch-providers",
+    "predev": "npm run fetch-providers",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview --host 0.0.0.0"
@@ -12,9 +15,16 @@
   "type": "module",
   "dependencies": {
     "@astrojs/starlight": "^0.39.2",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource/cormorant-garamond": "^5.2.11",
     "@pasqal-io/starlight-client-mermaid": "^0.1.0",
     "astro": "6.3.3",
+    "js-yaml": "^4.2.0",
     "sharp": "^0.34.5",
     "starlight-blog": "^0.26.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
   }
 }
