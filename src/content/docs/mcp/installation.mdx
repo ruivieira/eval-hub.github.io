@@ -154,9 +154,11 @@ All settings can be set via environment variables:
 | `EVALHUB_HOST`         | HTTP server bind host                        | `localhost`    |
 | `EVALHUB_PORT`         | HTTP server bind port                        | `3001`        |
 | `EVALHUB_INSECURE`     | Skip TLS certificate verification            | `false`       |
-| `EVALHUB_LIST_PAGE_LIMIT` | Default page size for list operations     | `100`         |
+| `EVALHUB_LIST_PAGE_LIMIT` | Default page size for list operations     | `200`         |
 | `EVALHUB_TLS_CERT_FILE`| TLS certificate file (for HTTPS serving)     | —             |
 | `EVALHUB_TLS_KEY_FILE` | TLS private key file (for HTTPS serving)     | —             |
+| `EVALHUB_AUTH_TYPE`     | Inbound authentication: `none` or `rbac-proxy`  | `none`        |
+| `EVALHUB_CA_CERT_PATH`  | Custom CA certificate path for TLS verification  | —             |
 
 ### CLI flags
 
@@ -173,6 +175,7 @@ evalhub-mcp --transport http --port 3001 --config ~/.evalhub/config.yaml
 | `--insecure`  | Skip TLS verification                   |
 | `--tls-cert`  | TLS certificate for HTTPS serving        |
 | `--tls-key`   | TLS private key for HTTPS serving        |
+| `--auth-type`  | Inbound authentication (`none` or `rbac-proxy`) |
 | `--version`   | Print version and exit                   |
 
 ### Configuration precedence
@@ -180,8 +183,8 @@ evalhub-mcp --transport http --port 3001 --config ~/.evalhub/config.yaml
 Settings are resolved in this order (highest priority first):
 
 1. CLI flags
-2. YAML config file
-3. Environment variables
+2. Environment variables
+3. YAML config file
 4. Defaults
 
 ### Transport modes

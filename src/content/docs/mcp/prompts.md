@@ -78,7 +78,7 @@ Guidance for comparing results across multiple evaluation jobs.
 
 | Argument  | Required | Description                                                                    |
 | --------- | -------- | ------------------------------------------------------------------------------ |
-| `job_ids` | No       | Comma-separated job IDs to compare. If provided, skips the job selection step. |
+| `job_ids` | No       | Comma-separated job IDs to compare (minimum 2 required). If provided, skips the job selection step. |
 
 ### Workflow steps
 

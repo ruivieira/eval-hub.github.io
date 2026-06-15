@@ -15,8 +15,13 @@ Returns all registered evaluation providers.
 ```json
 [
   {
-    "id": "garak",
-    "name": "Garak",
+    "resource": {
+      "id": "garak",
+      "created_at": "2026-05-01T12:00:00Z",
+      "updated_at": "2026-05-10T08:30:00Z"
+    },
+    "name": "garak",
+    "title": "Garak",
     "description": "LLM vulnerability scanner and red-teaming framework",
     "agent": {
       "evaluates": ["safety", "security", "red_teaming", "toxicity"],
@@ -33,8 +38,13 @@ Returns all registered evaluation providers.
     }
   },
   {
-    "id": "guidellm",
-    "name": "GuideLLM",
+    "resource": {
+      "id": "guidellm",
+      "created_at": "2026-05-01T12:00:00Z",
+      "updated_at": "2026-05-10T08:30:00Z"
+    },
+    "name": "guidellm",
+    "title": "GuideLLM",
     "description": "Performance and latency benchmarking",
     "agent": {
       "evaluates": ["performance", "throughput", "latency"],
@@ -44,6 +54,10 @@ Returns all registered evaluation providers.
   }
 ]
 ```
+
+:::note
+Each provider is a `ProviderResource` object. The `resource` field contains the provider ID and timestamps. The `name` field is the internal identifier (slug), while `title` is the human-readable display name.
+:::
 
 :::note
 The `agent` block is optional. Providers without agent metadata omit the field. See [Agent Discoverability](/mcp/agent-discoverability/) for field definitions.
@@ -65,16 +79,7 @@ Returns details for a single provider including its available benchmarks and opt
 
 **URI:** `evalhub://benchmarks`
 
-Returns all benchmarks across all providers. Supports pagination.
-
-**Query parameters:**
-
-| Parameter | Type    | Description                                   |
-| --------- | ------- | --------------------------------------------- |
-| `limit`   | integer | Maximum items to return (1–2000, default 100) |
-| `offset`  | integer | Number of items to skip                       |
-
-**Example:** `evalhub://benchmarks?limit=50&offset=0`
+Returns all benchmarks across all providers.
 
 ### Get a benchmark by ID
 
@@ -88,12 +93,12 @@ Returns details for a single benchmark including its provider, description, and 
 
 **URI:** `evalhub://benchmarks?label={tag}`
 
-Filter benchmarks by tag. The `label` parameter can be repeated for OR-style filtering.
+Filter benchmarks by tag. The `label` parameter can be repeated for AND-style filtering — all specified labels must match.
 
 **Examples:**
 
 - `evalhub://benchmarks?label=safety` — benchmarks tagged "safety"
-- `evalhub://benchmarks?label=rag&label=reasoning` — benchmarks tagged "rag" or "reasoning"
+- `evalhub://benchmarks?label=rag&label=reasoning` — benchmarks tagged both "rag" and "reasoning"
 
 ---
 
@@ -108,9 +113,14 @@ Returns all pre-defined benchmark collections.
 ```json
 [
   {
-    "id": "safety-and-fairness-v1",
+    "resource": {
+      "id": "safety-and-fairness-v1",
+      "created_at": "2026-05-01T12:00:00Z",
+      "updated_at": "2026-05-10T08:30:00Z"
+    },
     "name": "Safety and Fairness v1",
     "description": "Safety and bias evaluation benchmarks",
+    "category": "safety",
     "agent": {
       "evaluates": ["safety", "fairness", "bias", "toxicity", "ethics", "truthfulness"],
       "summary": "Comprehensive safety and fairness suite covering toxicity, bias, truthfulness, and ethics",
@@ -125,12 +135,21 @@ Returns all pre-defined benchmark collections.
     }
   },
   {
-    "id": "leaderboard-v2",
+    "resource": {
+      "id": "leaderboard-v2",
+      "created_at": "2026-05-01T12:00:00Z",
+      "updated_at": "2026-05-10T08:30:00Z"
+    },
     "name": "Leaderboard v2",
-    "description": "Standard leaderboard benchmarks"
+    "description": "Standard leaderboard benchmarks",
+    "category": "general"
   }
 ]
 ```
+
+:::note
+Each collection is a `CollectionResource` object. The `resource` field contains the collection ID and timestamps.
+:::
 
 ### Get a collection by ID
 
@@ -198,9 +217,12 @@ Returns server version and build information.
 ```json
 {
   "version": "0.4.0",
-  "build": "abc123",
   "git_hash": "d2c6d42",
+  "build_date": "2026-05-20T12:00:00Z",
   "go_version": "go1.25.9",
+  "os": "linux",
+  "arch": "amd64",
+  "mcp_library": "github.com/modelcontextprotocol/go-sdk",
   "mcp_library_version": "0.2.0"
 }
 ```
