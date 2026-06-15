@@ -59,6 +59,17 @@ Find model providers that evaluate safety:
 }
 ```
 
+### Response metadata
+
+The response includes a `_meta` object with diagnostic fields useful for debugging filter behavior:
+
+| Field                | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| `target_types_found` | Comma-separated target types present in results      |
+| `target_type`        | The `target_type` filter that was applied             |
+| `evaluates_found`    | Comma-separated evaluates tags present in results    |
+| `evaluates`          | The `evaluates` filter that was applied               |
+
 ### Notes
 
 - Without filters, all providers are returned (including those without `agent` metadata).
@@ -172,7 +183,7 @@ Cancel a running or pending evaluation job.
 ```json
 {
   "job_id": "job-a1b2c3d4",
-  "message": "Job cancelled successfully"
+  "message": "Job job-a1b2c3d4 cancelled successfully"
 }
 ```
 
@@ -214,7 +225,9 @@ Get the current status of an evaluation job with progress and per-benchmark deta
       "provider_id": "lm-evaluation-harness",
       "status": "completed",
       "started_at": "2026-05-21T10:00:00Z",
-      "completed_at": "2026-05-21T10:15:00Z"
+      "completed_at": "2026-05-21T10:15:00Z",
+      "result_interpretation": "Higher is better. Measures broad academic knowledge across 57 subjects.",
+      "complements": ["hellaswag", "arc_challenge"]
     },
     {
       "id": "hellaswag",
@@ -227,6 +240,10 @@ Get the current status of an evaluation job with progress and per-benchmark deta
   "started_at": "2026-05-21T10:00:00Z"
 }
 ```
+
+:::note
+When a benchmark reaches a terminal state (completed or failed), the response is enriched with `result_interpretation` and `complements` from the provider's agent metadata. These fields are omitted for benchmarks still in progress.
+:::
 
 ### Job states
 
