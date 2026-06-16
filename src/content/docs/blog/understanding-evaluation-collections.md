@@ -1,7 +1,6 @@
-```markdown
 ---
 title: "Understanding evaluation collections in EvalHub"
-date: 2026-06-04
+date: 2026-06-04T00:00:00.000Z
 authors:
   - william
   - julian
@@ -11,4 +10,3 @@ excerpt: >
 ---
 
 [Red Hat Developer blog](https://developers.redhat.com/articles/2026/06/04/understanding-evaluation-collections-evalhub)
-```
