@@ -58,6 +58,14 @@ export default defineConfig({
               name: 'Marius Danciu',
               url: 'https://github.com/mariusdanciu',
             },
+            matteo: {
+              name: 'Matteo Mortari',
+              url: 'https://github.com/tarilabs',
+            },
+            rui: {
+              name: 'Rui Vieira',
+              url: 'https://github.com/ruivieira',
+            },
           },
         }),
         starlightClientMermaid(),
