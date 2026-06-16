@@ -46,6 +46,18 @@ export default defineConfig({
               name: 'Gin Biak Naulak',
               url: 'https://github.com/gnaulak-redhat',
             },
+            julian: {
+              name: 'Julian Payne',
+              url: 'https://github.com/julpayne',
+            },
+            william: {
+              name: 'William Caban Babilonia',
+              url: 'https://github.com/williamcaban',
+            },
+            marius: {
+              name: 'Marius Danciu',
+              url: 'https://github.com/mariusdanciu',
+            },
           },
         }),
         starlightClientMermaid(),

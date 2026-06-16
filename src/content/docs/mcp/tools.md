@@ -4,7 +4,7 @@ title: "Tool Reference"
 
 The EvalHub MCP server exposes four tools: one for discovering evaluation providers and three for managing evaluation jobs.
 
-## discover_providers
+## Tool: discover_providers
 
 Discover evaluation providers using [agent metadata](/mcp/agent-discoverability/). Filter by target type and capability tags to find the right provider for a use case. Each result includes a summary, usage hints, result interpretation guidance, and complementary provider suggestions.
 
@@ -79,7 +79,7 @@ The response includes a `_meta` object with diagnostic fields useful for debuggi
 
 ---
 
-## submit_evaluation
+## Tool: submit_evaluation
 
 Submit a new model evaluation job.
 
@@ -160,7 +160,7 @@ Submit a new model evaluation job.
 
 ---
 
-## cancel_job
+## Tool: cancel_job
 
 Cancel a running or pending evaluation job.
 
@@ -194,7 +194,7 @@ Cancel a running or pending evaluation job.
 
 ---
 
-## get_job_status
+## Tool: get_job_status
 
 Get the current status of an evaluation job with progress and per-benchmark details.
 
