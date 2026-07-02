@@ -189,7 +189,6 @@ export default defineConfig({
           items: [
             { label: 'Server API', slug: 'reference/server-api' },
             { label: 'Python SDK', slug: 'reference/sdk-client' },
-            { label: 'CVE Fixer', slug: 'reference/cve-fixer' },
           ],
         },
       ],
