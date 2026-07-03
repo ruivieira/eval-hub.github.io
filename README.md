@@ -36,10 +36,3 @@ Post content goes here.
 ## License
 
 See the [LICENSE](LICENSE) file for details.
-
-## Evalhub deployment status
-
-### Cluster [prabhu-comhub.xqmp.p3.openshiftapps.com](https://console-openshift-console.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/dashboards)
-
-![prabhu/prabhu-comhub](https://img.shields.io/badge/dynamic/json.svg?colorB=green&style=round-square&label=prabhu/prabhu-comhub&query=build_date&url=https%3A%2F%2Fevalhub-prabhu.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com%2Fapi%2Fv1%2Fhealth)
-![julian/prabhu-comhub](https://img.shields.io/badge/dynamic/json.svg?colorB=green&style=round-square&label=julian/prabhu-comhub&query=build_date&url=https%3A%2F%2Fevalhub-julian.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com%2Fapi%2Fv1%2Fhealth)
