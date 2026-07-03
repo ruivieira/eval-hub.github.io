@@ -2,47 +2,149 @@
 title: "Model Authentication"
 ---
 
-import { Steps } from '@astrojs/starlight/components';
+EvalHub routes all model traffic through a sidecar proxy running alongside the adapter. The sidecar handles credential resolution and upstream TLS — the adapter never sees real API keys or SA tokens. A secret is required only when the model or an in-cluster service needs authentication.
 
-If a model endpoint requires authentication or custom TLS verification, EvalHub can provide the necessary credentials to the evaluation job so the adapter can securely call the model endpoint.
+## How It Works
 
-### Model Secured with an API Key (and Optional Custom TLS)
+```
+  User Secret (user-provided)
+  ┌────────────────────────────────────┐
+  │ api-key:       <real>              │
+  │ ca_cert:       <pem>               │
+  │ hf-token:      <real>              │
+  │ mysvc_api-key: <real>              │
+  │ mysvc_url:     https://mysvc...    │
+  └──────┬─────────────────────────────┘
+         │
+         ├─────────────────────────────────────────────────────────────────────┐
+         │ EvalHub generates Internal Secret (api-key, *_api-key, *_sa_token,  │ mounted into Sidecar
+         │ *_url only)                                                         │ (all keys, real values)
+         ▼                                                                     ▼
+  ┌──────────────────────────────────────┐                   ┌──────────────────────────────────────┐
+  │ Internal Secret (ephemeral, per-job) │                   │ Sidecar                              │
+  │ api-key:       api-key:ref           │                   │ - api-key:       <real>              │
+  │ mysvc_api-key: mysvc_api-key:ref     │                   │ - ca_cert:       <pem>               │
+  │ mysvc_url:     http://localhost:8080 │                   │ - hf-token:      <real>              │
+  └──────┬───────────────────────────────┘                   │ - mysvc_api-key: <real>              │
+         │                                                   │ - mysvc_url:     https://mysvc...    │
+         │ projected volume (adapter mount)                  └──────────────────────────────────────┘
+         ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  Adapter                                                 │
+  │  api-key:       api-key:ref          (internal secret)   │
+  │  mysvc_api-key: mysvc_api-key:ref    (internal secret)   │
+  │  mysvc_url:     http://localhost:8080 (internal secret)  │
+  │  hf-token:      <real>               (user secret)       │
+  │  ca_cert:       <pem>                (user secret)       │
+  └──────────────────────────────────────────────────────────┘
+```
 
-Create a Kubernetes Secret consisting of the API key and optional CA certificate. In the job request, set `model.auth.secret_ref` to that secret’s name. EvalHub mounts the secret into the job pod; the adapter sends the API key in the `Authorization: Bearer` header and uses the CA certificate for TLS verification.
+> **Note:** The diagram illustrates the `api-key` / `*_api-key` / `*_url` pattern. Other patterns exist — see the scenarios below for details.
 
-### Model Secured with Kubernetes RBAC (ServiceAccount Token)
+All model traffic is routed through the **EvalHub sidecar proxy** running in the same pod as the adapter. You provide credentials in a Kubernetes secret — EvalHub ensures API keys and SA tokens are only visible to the sidecar; `hf-token` and `ca_cert` may be projected to the adapter as passthrough keys. The sidecar resolves and injects credentials into outbound requests on behalf of the adapter.
 
-The model endpoint is protected by Kubernetes RBAC (for example, a KServe service exposed through kube-rbac-proxy). Grant the EvalHub job ServiceAccount access to the model (for example, via a RoleBinding to the model’s view role). The adapter automatically sends the pod’s ServiceAccount token when calling the model. If the endpoint uses a custom CA for TLS only, you can use a secret with just `ca_cert` and reference it with `model.auth.secret_ref`.
+EvalHub recognizes the following secret keys: `api-key`, `*_api-key`, `*_sa_token`, and `*_url`. When `model.auth.secret_ref` is set and the user secret contains any of these keys, EvalHub generates an ephemeral internal secret where values are replaced with `:ref` placeholders (e.g. `api-key` → `api-key:ref`) and `*_url` values are replaced with `http://localhost:8080` (the sidecar address). This internal secret is created per evaluation job and removed when the Job resource is deleted (Kubernetes GC via owner reference). For `ca_cert`-only or `hf-token`-only secrets no internal secret is created — those keys are passthrough.
 
-Both approaches work when EvalHub runs in Kubernetes and creates evaluation jobs in a tenant namespace.
+The adapter receives a projected volume combining the internal ref secret (when present) with passthrough keys (`hf-token`, `ca_cert`) from the user secret. The user-provided secret with real credential values is mounted only into the sidecar.
 
-## When to use a secret
+You submit the real model URL in `model.url` when creating a job. EvalHub rewrites the in-pod configuration so the adapter always calls `http://localhost:8080` (the sidecar); the sidecar forwards to the real upstream URL.
 
-A secret is only required if:
+This means:
+- Real API keys and SA tokens are only ever seen by the sidecar, not the adapter
+- TLS to the model endpoint is handled by the sidecar using `ca_cert` from the secret
+- The adapter always calls `http://localhost:8080`, regardless of auth type
 
-- The model requires an API key
-- The endpoint uses a custom CA certificate for TLS
+This guide applies to evaluation jobs created by the Kubernetes runtime. Local runtime behavior may differ.
 
-If the model requires neither, omit the `model.auth` section.
+See also: [ODH-ADR-EH-0004 — Eval Sidecar Credential Injection](https://github.com/opendatahub-io/architecture-decision-records/blob/main/architecture-decision-records/eval-hub/ODH-ADR-EH-0004-eval-sidecar-creds-injection.md)
 
 ---
 
-## Scenario 1: API key and CA certificate
+## Writing an adapter
 
-Use this scenario when the model requires an API key and/or a custom CA certificate for TLS (for example, a secured vLLM endpoint).
+### Common case: single model API key
+
+Use `resolve_model_credentials()` — it reads `api-key` from the mounted secret and returns a `ModelCredentials` object. `api_key` is the ref token (e.g. `api-key:ref`), not the real secret value. If no secret is mounted (open model), `api_key` is `None`.
+
+```python
+# Inside run_benchmark_job(self, config: JobSpec, ...)
+from evalhub.adapter.auth import resolve_model_credentials
+
+creds = resolve_model_credentials()
+
+headers = {}
+if creds.api_key:
+    headers["Authorization"] = f"Bearer {creds.api_key}"
+
+resp = requests.post(
+    f"{config.model.url}/v1/chat/completions",
+    headers=headers,
+    json={...},
+)
+```
+
+The sidecar intercepts the request, resolves `api-key:ref` → real API key, and forwards to the model endpoint. If `api_key` is `None` (SA token-authenticated, RBAC-protected or open model), omit the Authorization header entirely — do not send a placeholder. The sidecar injects the pod SA token when no Authorization header is present or when an empty `Bearer` value is sent.
+
+### Custom keys (KFP, multi-model, hf-token)
+
+Use `read_model_auth_key(key_name)` to read any key from the secret mount by name. Returns `None` if the key is absent or the secret is not mounted.
+
+```python
+from evalhub.adapter.auth import read_model_auth_key
+
+# KFP SA token (Scenario 3)
+kfp_token = read_model_auth_key("kfp_sa_token")  # "kfp_sa_token:ref" or None
+kfp_url   = read_model_auth_key("kfp_url")        # sidecar address or None
+
+# Multi-model (Scenario 4)
+judge_token = read_model_auth_key("judge_api-key")  # "judge_api-key:ref" or None
+judge_url   = read_model_auth_key("judge_url")       # sidecar address or None
+
+# HuggingFace token (projected directly — real value, not a ref)
+hf_token = read_model_auth_key("hf-token")
+```
+
+Handle `None` explicitly — it means the key was not in the secret or no secret was mounted:
+
+```python
+if kfp_token is None:
+    raise RuntimeError("kfp_sa_token not found in secret mount — check secret_ref")
+```
+
+### Common mistakes
+
+- **Do not expect a real API key from the mount.** In Kubernetes jobs, `api-key` contains `api-key:ref` — a placeholder. The sidecar resolves the real value at request time.
+- **Do not send a placeholder Authorization header for SA token-authenticated, RBAC-protected or open models.** Omit the header (or send an empty `Bearer`) so the sidecar can inject the pod SA token. A non-empty, non-ref Authorization value is forwarded as-is and will bypass SA injection.
+- **Always use `config.model.url` from `JobSpec`; never hardcode the submitted URL.** Although you submit the real endpoint URL when creating a job, `config.model.url` is automatically rewritten to `http://localhost:8080` (the sidecar) inside the pod.
+
+---
+
+## When to use a secret
+
+A secret (`model.auth.secret_ref`) is required if:
+
+- The model requires an API key (`api-key`)
+- The endpoint uses a custom CA certificate (`ca_cert`)
+- You need a HuggingFace token for gated datasets (`hf-token`)
+- You need to call an in-cluster SA-token-authenticated service like KFP (`_sa_token` / `_url`)
+
+If none of the above apply, omit `model.auth`. The sidecar still proxies all model traffic. For SA token-authenticated, RBAC-protected models (Scenario 2), the sidecar injects the pod SA token when the adapter sends no Authorization header.
+
+---
+
+## Scenario 1: API key (and optional CA certificate)
+
+Use this when the model requires an API key, for example a secured vLLM endpoint.
 
 ### Secret structure
 
-Create a Kubernetes Secret in the tenant namespace where EvalHub runs evaluation jobs.
+| Key | Description |
+|-----|-------------|
+| `api-key` | API key — sidecar injects as `Authorization: Bearer <api-key>` |
+| `ca_cert` | PEM CA certificate — sidecar uses for upstream TLS to the model endpoint |
+| `hf-token` | HuggingFace token — projected directly to the adapter (HF Hub calls bypass the sidecar) |
 
-The secret can contain the following keys:
-
-- **`api-key`** (optional) – Sent in the request header as: `Authorization: Bearer <api-key>`
-- **`ca_cert`** (optional) – PEM-encoded CA certificate used for TLS verification.
-
-At least one of these keys must be present. If `ca_cert` is not provided, the adapter uses the container's system trust store.
-
-**Example secret:**
+At least one of `api-key` or `ca_cert` must be present. A secret containing only `hf-token` is not enough — the HF token is still available to the adapter, but the sidecar will not inject an API key.
 
 ```yaml
 apiVersion: v1
@@ -59,7 +161,7 @@ stringData:
     -----END CERTIFICATE-----
 ```
 
-Or create it using kubectl:
+Or using kubectl:
 
 ```bash
 kubectl create secret generic vllm-api-key -n team-a \
@@ -72,8 +174,6 @@ kubectl create secret generic vllm-api-key -n team-a \
 1. **Reference the secret in the job**
 
    Set `model.auth.secret_ref` to the secret name when submitting the evaluation job.
-
-   **Example request:**
 
    ```bash {10-12}
    curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
@@ -103,9 +203,7 @@ kubectl create secret generic vllm-api-key -n team-a \
    }'
    ```
 
-   **Example using the Python SDK**
-
-   The following example submits the same evaluation job using the EvalHub Python SDK.
+   **Using the Python SDK:**
 
    ```python
    import os
@@ -134,40 +232,25 @@ kubectl create secret generic vllm-api-key -n team-a \
    )
    ```
 
+   Adapters that use `resolve_model_credentials()` get `api-key:ref` automatically — no extra code needed for single-model API key auth.
+
 </Steps>
-
-### Troubleshooting
-
-If the evaluation job fails with authentication or TLS errors, check the adapter container logs:
-
-```bash
-kubectl logs -n <tenant-namespace> job/<job-name> -c adapter
-```
-
-### Verifying model access (optional)
-
-Before running a full evaluation, you can verify that the model endpoint is reachable using the same API key and CA certificate used by the evaluation job.
-
-Typical failures include:
-
-- Missing CA certificate → TLS error
-- Missing API key → 401 Unauthorized
 
 ---
 
-## Scenario 2: ServiceAccount token (KServe / kube-rbac-proxy)
+## Scenario 2: SA token-authenticated, RBAC-protected model (KServe / kube-rbac-proxy)
 
-Use this scenario when the model endpoint is protected by Kubernetes RBAC.
+Use this when the model endpoint is protected by Kubernetes RBAC (e.g. a KServe service behind kube-rbac-proxy).
 
-The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends the pod's ServiceAccount token when calling the model. The model's proxy verifies that this ServiceAccount has permission to access the model.
+The sidecar automatically injects the pod's ServiceAccount token as `Authorization: Bearer <token>` when the adapter sends no Authorization header. The adapter does not have direct access to the SA token — the sidecar handles injection transparently.
+
+If the endpoint uses a custom CA for TLS only, create a secret with just `ca_cert` and reference it with `model.auth.secret_ref`.
 
 <Steps>
 
 1. **Grant the ServiceAccount access**
 
-   The model namespace typically already has a Role (e.g. `gpt2-view-role`) from model deployment. Create a **RoleBinding** that binds the EvalHub job ServiceAccount to that role. The job runs as an SA in the tenant namespace (e.g. `evalhub-prabhu-job` in `team-a`).
-
-   **Using oc:**
+   The model namespace typically already has a Role (e.g. `gpt2-view-role`) from model deployment. Create a **RoleBinding** that binds the EvalHub job ServiceAccount to that role.
 
    ```bash
    oc create rolebinding gpt2-view-evalhub-prabhu-job \
@@ -176,7 +259,7 @@ The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends th
      -n team-a
    ```
 
-   **Or apply a RoleBinding YAML:**
+   Or apply a RoleBinding YAML:
 
    ```yaml
    apiVersion: rbac.authorization.k8s.io/v1
@@ -194,23 +277,17 @@ The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends th
      apiGroup: rbac.authorization.k8s.io
    ```
 
-   Apply and verify access:
+   Verify access:
 
    ```bash
-   kubectl apply -f role-binding.yaml
-
    kubectl auth can-i get inferenceservices.serving.kserve.io/gpt2 \
      -n team-a \
      --as=system:serviceaccount:team-a:evalhub-prabhu-job
    ```
 
-   The command should return: `yes`
-
 2. **Submit the job**
 
-   When using ServiceAccount authentication, do not set `model.auth` unless the endpoint uses a custom CA certificate—in that case, create a secret containing only `ca_cert` and reference it using `model.auth.secret_ref`.
-
-   **Example:**
+   Omit `model.auth` unless the endpoint uses a custom CA certificate.
 
    ```bash
    curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
@@ -218,7 +295,7 @@ The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends th
      -H "Content-Type: application/json" \
      -H "X-Tenant: team-a" \
      -d '{
-     "name": "model api key/cert test",
+     "name": "SA token model test",
      "model": {
        "url": "https://gpt2-team-a.apps.rosa.prabhu-comhub.xqmp.p3.openshiftapps.com/v1",
        "name": "gpt2"
@@ -241,9 +318,188 @@ The evaluation job uses the EvalHub job ServiceAccount, and the adapter sends th
 
 ---
 
+## Scenario 3: In-cluster SA-token-authenticated services (KFP and others)
+
+Use this when the adapter needs to call an in-cluster service (such as Kubeflow Pipelines) that requires the pod SA token. Use the `_sa_token` / `_url` key convention — the sidecar injects the SA token and routes to the real service URL.
+
+### Secret structure
+
+| Key | Value | Effect |
+|-----|-------|--------|
+| `<prefix>_sa_token` | `""` (empty) | Sidecar injects pod SA token |
+| `<prefix>_sa_token` | `<jwt>` | Sidecar forwards value as-is |
+| `<prefix>_url` | Real service URL | Sidecar routes to this upstream |
+
+The prefix must match between the `_sa_token` and `_url` keys (e.g. `kfp_sa_token` pairs with `kfp_url`).
+
+```bash
+kubectl create secret generic kfp-creds \
+  --from-literal=kfp_sa_token="" \
+  --from-literal=kfp_url="http://ml-pipeline.kubeflow.svc.cluster.local:8888" \
+  -n team-a
+```
+
+<Steps>
+
+1. **Reference the secret in the job**
+
+   ```bash
+   curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
+     -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -H "X-Tenant: team-a" \
+     -d '{
+     "name": "kfp sa token test",
+     "model": {
+       "url": "https://your-model-endpoint/v1",
+       "name": "gpt2",
+       "auth": {
+         "secret_ref": "kfp-creds"
+       }
+     },
+     "benchmarks": [
+       {
+         "id": "arc_easy",
+         "provider_id": "lm_evaluation_harness",
+         "parameters": {
+           "limit": 5,
+           "num_examples": 10,
+           "tokenizer": "google/flan-t5-small"
+         }
+       }
+     ]
+   }'
+   ```
+
+2. **Call KFP from your adapter**
+
+   The adapter reads ref tokens from the secret mount and calls the sidecar. The sidecar resolves `kfp_sa_token:ref` → injects pod SA token → forwards to `kfp_url`.
+
+   ```python
+   from evalhub.adapter.auth import read_model_auth_key
+
+   kfp_token = read_model_auth_key("kfp_sa_token")  # returns "kfp_sa_token:ref"
+   kfp_url    = read_model_auth_key("kfp_url")       # returns sidecar address
+
+   resp = requests.get(
+       f"{kfp_url}/apis/v1beta1/runs",
+       headers={"Authorization": f"Bearer {kfp_token}"},
+   )
+   ```
+
+</Steps>
+
+---
+
+## Scenario 4: Multi-model secrets
+
+Use this when a single eval job needs to call multiple model endpoints, each with its own API key and URL.
+
+### Secret structure
+
+Use a `<prefix>_api-key` / `<prefix>_url` pair per model:
+
+```bash
+kubectl create secret generic multi-model-creds \
+  --from-literal=model-1_api-key="sk-model1-key" \
+  --from-literal=model-1_url="https://model1.example.com" \
+  --from-literal=model-2_api-key="sk-model2-key" \
+  --from-literal=model-2_url="https://model2.example.com" \
+  -n team-a
+```
+
+<Steps>
+
+1. **Reference the secret in the job**
+
+   ```bash
+   curl -k -X POST "$HOST/api/v1/evaluations/jobs" \
+     -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -H "X-Tenant: team-a" \
+     -d '{
+     "name": "multi-model test",
+     "model": {
+       "url": "https://model1.example.com/v1",
+       "name": "model-1",
+       "auth": {
+         "secret_ref": "multi-model-creds"
+       }
+     },
+     "benchmarks": [
+       {
+         "id": "arc_easy",
+         "provider_id": "lm_evaluation_harness",
+         "parameters": {
+           "limit": 5,
+           "num_examples": 10,
+           "tokenizer": "google/flan-t5-small"
+         }
+       }
+     ]
+   }'
+   ```
+
+2. **Use ref tokens in your adapter**
+
+   For multi-model secrets, your adapter code must read each key by name and send it as the Bearer token — the sidecar resolves the real key and routes to the matching `_url`.
+
+   ```python
+   from evalhub.adapter.auth import read_model_auth_key
+
+   model1_token = read_model_auth_key("model-1_api-key")  # returns "model-1_api-key:ref"
+   model1_url   = read_model_auth_key("model-1_url")       # returns sidecar address
+
+   model2_token = read_model_auth_key("model-2_api-key")  # returns "model-2_api-key:ref"
+   model2_url   = read_model_auth_key("model-2_url")       # returns sidecar address
+
+   resp = requests.post(
+       f"{model1_url}/v1/chat/completions",
+       headers={"Authorization": f"Bearer {model1_token}"},
+       json={...},
+   )
+   ```
+
+   Each request is independently routed based on the prefix in the ref token.
+
+</Steps>
+
+---
+
+## Open models (no authentication)
+
+If your model endpoint is fully public and requires no API key, CA cert, or SA token, omit `model.auth` entirely. The sidecar still proxies all model traffic. No credential secret is mounted on the adapter.
+
+---
+
+## Troubleshooting
+
+If the evaluation job fails with authentication or TLS errors, check both the adapter and sidecar container logs:
+
+```bash
+# Adapter logs
+kubectl logs -n <tenant-namespace> job/<job-name> -c adapter
+
+# Sidecar logs
+kubectl logs -n <tenant-namespace> job/<job-name> -c sidecar
+```
+
+Typical failures include:
+
+- Missing CA certificate → TLS error on sidecar upstream connection
+- Missing or invalid API key → 401 Unauthorized from the model endpoint
+- An `api-key` key present in the secret but with an empty string value → 400 Bad Request from the sidecar
+- RBAC misconfiguration (Scenario 2) → 403 Forbidden from the upstream model endpoint; check the RoleBinding and SA permissions
+- `_url` key used as a ref token → 400 Bad Request from the sidecar (only `api-key`, `*_api-key`, `*_sa_token` are valid ref keys)
+
+---
+
 ## Summary
 
-| Scenario              | Secret                          | model.auth                    | Authentication              |
-|-----------------------|----------------------------------|-------------------------------|-----------------------------|
-| API key               | `api-key` and/or `ca_cert`       | `secret_ref` required         | API key (`Authorization: Bearer`) |
-| ServiceAccount token  | Optional (`ca_cert` only for TLS) | Omit unless TLS secret is used | Pod ServiceAccount token    |
+| Scenario | Secret keys | `model.auth` | How the sidecar handles the request |
+|----------|-------------|--------------|------------------------|
+| API key | `api-key`, optionally `ca_cert`, `hf-token` | `secret_ref` required | Sidecar resolves `:ref` token → real key |
+| SA token-authenticated, RBAC-protected model | None, or `ca_cert` only | Omit unless TLS | Sidecar injects pod SA token when no Authorization from adapter |
+| KFP / in-cluster service | `<prefix>_sa_token`, `<prefix>_url` | `secret_ref` required | Sidecar injects pod SA token via `_sa_token:ref` |
+| Multi-model | `<prefix>_api-key`, `<prefix>_url` per model | `secret_ref` required | Adapter sends per-prefix ref; sidecar resolves and routes to matching URL |
+| Open model | None | Omit | Sidecar proxies; no credentials needed |
