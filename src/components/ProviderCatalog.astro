@@ -83,8 +83,6 @@ const fetchedDate = new Date(fetchedAt).toLocaleString(undefined, {
     const detailEl = document.getElementById('catalog-detail');
     const emptyEl = document.getElementById('catalog-detail-empty');
 
-    let selectedId: string | null = null;
-
     function applyFilters(): void {
       const query = (searchInput?.value ?? '').trim().toLowerCase();
       let visible = 0;
@@ -107,8 +105,6 @@ const fetchedDate = new Date(fetchedAt).toLocaleString(undefined, {
     }
 
     function selectProvider(id: string): void {
-      selectedId = id;
-
       cardsEl?.querySelectorAll('.provider-card').forEach((card) => {
         const isSelected = card.getAttribute('data-provider-id') === id;
         card.classList.toggle('is-selected', isSelected);
@@ -133,9 +129,9 @@ const fetchedDate = new Date(fetchedAt).toLocaleString(undefined, {
 
       function getConfigMapOptions() {
         const fd = form ? new FormData(form) : null;
-        const slug = toK8sSlug(providerId);
+        const slug = toK8sSlug(providerId!);
         return {
-          providerId,
+          providerId: providerId!,
           providerYaml,
           namespace: String(fd?.get('namespace') ?? 'opendatahub'),
           name: String(fd?.get('name') ?? `evalhub-provider-${slug}`),
