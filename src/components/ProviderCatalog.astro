@@ -2,6 +2,7 @@
 import type { CatalogProvider } from '../types/configmap';
 import ProviderCard from './ProviderCard.astro';
 import ProviderDetail from './ProviderDetail.astro';
+// @ts-ignore - file is generated at build time by fetch-providers
 import catalog from '../generated/providers-catalog.json';
 
 const { providers, fetchedAt, source } = catalog;
