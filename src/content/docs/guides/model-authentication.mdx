@@ -488,7 +488,7 @@ Typical failures include:
 
 - Missing CA certificate → TLS error on sidecar upstream connection
 - Missing or invalid API key → 401 Unauthorized from the model endpoint
-- Empty `api-key` in the secret → 400 Bad Request from the sidecar
+- An `api-key` key present in the secret but with an empty string value → 400 Bad Request from the sidecar
 - RBAC misconfiguration (Scenario 2) → 403 Forbidden from the upstream model endpoint; check the RoleBinding and SA permissions
 - `_url` key used as a ref token → 400 Bad Request from the sidecar (only `api-key`, `*_api-key`, `*_sa_token` are valid ref keys)
 
