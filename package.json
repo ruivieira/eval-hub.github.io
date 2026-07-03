@@ -9,6 +9,7 @@
     "predev": "npm run fetch-providers",
     "dev": "astro dev",
     "build": "astro build",
+    "check": "astro check",
     "preview": "astro preview --host 0.0.0.0"
   },
   "license": "Apache-2.0",
@@ -25,6 +26,8 @@
     "starlight-blog": "^0.26.1"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
+    "@astrojs/check": "^0.9.9",
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^6.0.3"
   }
 }
